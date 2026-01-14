@@ -54,6 +54,8 @@
             trackBarBrushSize = new TrackBar();
             lblPenSize = new Label();
             lblBrushSize = new Label();
+            trackBarEraserSize = new TrackBar();
+            lblEraserSize = new Label();
             comboBoxFont = new ComboBox();
             trackBarFontSize = new TrackBar();
             lblFont = new Label();
@@ -78,6 +80,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarPenSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
             SuspendLayout();
             // 
@@ -325,13 +328,28 @@
             // trackBarBrushSize
             // 
             trackBarBrushSize.Location = new Point(740, 225);
-            trackBarBrushSize.Maximum = 30;
-            trackBarBrushSize.Minimum = 3;
+            trackBarBrushSize.Maximum = 70;
+            trackBarBrushSize.Minimum = 10;
             trackBarBrushSize.Name = "trackBarBrushSize";
             trackBarBrushSize.Size = new Size(150, 56);
             trackBarBrushSize.TabIndex = 20;
-            trackBarBrushSize.Value = 8;
+            trackBarBrushSize.TickFrequency = 10;
+            trackBarBrushSize.TickStyle = TickStyle.BottomRight;
+            trackBarBrushSize.Value = 30;
             trackBarBrushSize.ValueChanged += trackBarBrushSize_ValueChanged;
+            // 
+            // trackBarEraserSize
+            // 
+            trackBarEraserSize.Location = new Point(740, 280);
+            trackBarEraserSize.Maximum = 70;
+            trackBarEraserSize.Minimum = 10;
+            trackBarEraserSize.Name = "trackBarEraserSize";
+            trackBarEraserSize.Size = new Size(150, 56);
+            trackBarEraserSize.TabIndex = 27;
+            trackBarEraserSize.TickFrequency = 10;
+            trackBarEraserSize.TickStyle = TickStyle.BottomRight;
+            trackBarEraserSize.Value = 30;
+            trackBarEraserSize.ValueChanged += trackBarEraserSize_ValueChanged;
             // 
             // lblPenSize
             // 
@@ -349,7 +367,16 @@
             lblBrushSize.Name = "lblBrushSize";
             lblBrushSize.Size = new Size(76, 20);
             lblBrushSize.TabIndex = 22;
-            lblBrushSize.Text = "Brush: 8px";
+            lblBrushSize.Text = "Brush: 30pts";
+            // 
+            // lblEraserSize
+            // 
+            lblEraserSize.AutoSize = true;
+            lblEraserSize.Location = new Point(740, 260);
+            lblEraserSize.Name = "lblEraserSize";
+            lblEraserSize.Size = new Size(86, 20);
+            lblEraserSize.TabIndex = 28;
+            lblEraserSize.Text = "Eraser: 30pts";
             // 
             // lblFont
             // 
@@ -402,6 +429,8 @@
             Controls.Add(lblFontSize);
             Controls.Add(comboBoxFont);
             Controls.Add(lblFont);
+            Controls.Add(lblEraserSize);
+            Controls.Add(trackBarEraserSize);
             Controls.Add(lblBrushSize);
             Controls.Add(lblPenSize);
             Controls.Add(trackBarBrushSize);
@@ -444,6 +473,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarPenSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -477,6 +507,8 @@
         private System.Windows.Forms.TrackBar trackBarBrushSize;
         private System.Windows.Forms.Label lblPenSize;
         private System.Windows.Forms.Label lblBrushSize;
+        private System.Windows.Forms.TrackBar trackBarEraserSize;
+        private System.Windows.Forms.Label lblEraserSize;
         private System.Windows.Forms.Label lblFont;
         private System.Windows.Forms.ComboBox comboBoxFont;
         private System.Windows.Forms.Label lblFontSize;

@@ -10,6 +10,7 @@ namespace Doodle_241439P
         Graphics g;
         Pen pen = new Pen(Color.Black, 2);  // Thin pen for precise drawing
         Pen brushPen = new Pen(Color.Black, 8);  // Thick pen for brush drawing
+        Pen eraserPen = new Pen(Color.LightGray, 30);  // Pen for eraser drawing
         SolidBrush brush = new SolidBrush(Color.Black);
         Point startP = new Point(0, 0);
         Point endP = new Point(0, 0);
@@ -20,7 +21,8 @@ namespace Doodle_241439P
         bool flagPen = false;
         string strText = "Doodle Painting";
         int penSize = 2;
-        int brushSize = 8;
+        int brushSize = 30;   // mandatory options: 10,30,50,70
+        int eraserSize = 30;  // mandatory options: 10,30,50,70
         string selectedFontName = "Arial";
         int selectedFontSize = 30;
         Point textPosition = new Point(0, 0);
@@ -84,10 +86,13 @@ namespace Doodle_241439P
                     // User can switch to Brush or Pen tool to draw
                 }
             }
-            else if (flagBrush || flagPen)
+            else if (flagBrush || flagPen || flagErase)
             {
                 if (e.Button == MouseButtons.Left)
+                {
                     flagDraw = true;
+                    endP = e.Location; // Initialize endP for continuous drawing
+                }
             }
         }
 
@@ -100,7 +105,7 @@ namespace Doodle_241439P
                 DrawTextOnCanvas();
                 picBoxMain.Invalidate();
             }
-            else if (flagDraw == true && (flagBrush == true || flagPen == true))
+            else if (flagDraw == true && (flagBrush == true || flagPen == true || flagErase == true))
             {
                 endP = e.Location;
                 g = Graphics.FromImage(bm);
@@ -129,7 +134,17 @@ namespace Doodle_241439P
                 }
                 else
                 {
-                    g.FillRectangle(brush, endP.X, endP.Y, 20, 20);
+                    // Eraser: Use line drawing to avoid gaps when moving fast
+                    eraserPen.Width = eraserSize;
+                    eraserPen.Color = picBoxMain.BackColor; // Use canvas background color
+                    eraserPen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+                    eraserPen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                    eraserPen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
+                    // Draw line to connect points smoothly
+                    g.DrawLine(eraserPen, startP, endP);
+                    // Fill ellipse at end point for complete coverage
+                    int radius = eraserSize / 2;
+                    g.FillEllipse(new SolidBrush(picBoxMain.BackColor), endP.X - radius, endP.Y - radius, eraserSize, eraserSize);
                 }
                 g.Dispose();
                 picBoxMain.Invalidate();
@@ -249,9 +264,13 @@ namespace Doodle_241439P
         private void picBoxErase_Click(object sender, EventArgs e)
         {
             brush = new SolidBrush(picBoxMain.BackColor);
+            eraserPen.Color = picBoxMain.BackColor;
+            eraserPen.Width = eraserSize;
             picBoxBrushColor.Image = Properties.Resources.eraser;
             flagErase = true;
             flagText = false;
+            flagBrush = false;
+            flagPen = false;
             SetToolBorder(picBoxErase);
         }
 
@@ -330,19 +349,13 @@ namespace Doodle_241439P
             Font font = new Font(selectedFontName, selectedFontSize);
             SolidBrush textBrush = new SolidBrush(pen.Color);
             
-            // Draw text with border
+            // Draw text
             g.DrawString(strText, font, textBrush, textPosition.X, textPosition.Y);
             
-            // Draw border around text
-            SizeF textSize = g.MeasureString(strText, font);
-            Rectangle textRect = new Rectangle(textPosition.X - 2, textPosition.Y - 2, 
-                (int)textSize.Width + 4, (int)textSize.Height + 4);
-            using (Pen borderPen = new Pen(Color.Black, 1))
-            {
-                g.DrawRectangle(borderPen, textRect);
-            }
-            
             // Calculate text bounds for dragging
+            SizeF textSize = g.MeasureString(strText, font);
+            Rectangle textRect = new Rectangle(textPosition.X, textPosition.Y, 
+                (int)textSize.Width, (int)textSize.Height);
             textBounds = textRect;
             
             textBrush.Dispose();
@@ -364,15 +377,6 @@ namespace Doodle_241439P
                     using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(128, pen.Color)))
                     {
                         e.Graphics.DrawString(previewText, font, textBrush, previewMousePos.X, previewMousePos.Y);
-                        
-                        // Draw border preview
-                        SizeF textSize = e.Graphics.MeasureString(previewText, font);
-                        Rectangle previewRect = new Rectangle(previewMousePos.X - 2, previewMousePos.Y - 2, 
-                            (int)textSize.Width + 4, (int)textSize.Height + 4);
-                        using (Pen borderPen = new Pen(Color.FromArgb(128, Color.Black), 1))
-                        {
-                            e.Graphics.DrawRectangle(borderPen, previewRect);
-                        }
                     }
                 }
             }
@@ -401,9 +405,82 @@ namespace Doodle_241439P
 
         private void trackBarBrushSize_ValueChanged(object sender, EventArgs e)
         {
-            brushSize = trackBarBrushSize.Value;
-            lblBrushSize.Text = $"Brush: {brushSize}px";
+            int value = trackBarBrushSize.Value;
+            
+            // If Control is held, snap to nearest preset (10, 30, 50, 70)
+            if (Control.ModifierKeys == Keys.Control)
+            {
+                value = SnapToPresetSize(value);
+                // Temporarily remove handler to avoid recursion
+                trackBarBrushSize.ValueChanged -= trackBarBrushSize_ValueChanged;
+                trackBarBrushSize.Value = value;
+                trackBarBrushSize.ValueChanged += trackBarBrushSize_ValueChanged;
+            }
+            
+            brushSize = value;
+            lblBrushSize.Text = $"Brush: {brushSize}pts";
             brushPen.Width = brushSize;
+        }
+
+        private void trackBarEraserSize_ValueChanged(object sender, EventArgs e)
+        {
+            int value = trackBarEraserSize.Value;
+            
+            // If Control is held, snap to nearest preset (10, 30, 50, 70)
+            if (Control.ModifierKeys == Keys.Control)
+            {
+                value = SnapToPresetSize(value);
+                // Temporarily remove handler to avoid recursion
+                trackBarEraserSize.ValueChanged -= trackBarEraserSize_ValueChanged;
+                trackBarEraserSize.Value = value;
+                trackBarEraserSize.ValueChanged += trackBarEraserSize_ValueChanged;
+            }
+            
+            eraserSize = value;
+            eraserPen.Width = eraserSize; // Update eraser pen width
+            lblEraserSize.Text = $"Eraser: {eraserSize}pts";
+        }
+
+        private void trackBarFontSize_ValueChanged(object sender, EventArgs e)
+        {
+            int value = trackBarFontSize.Value;
+            
+            // If Control is held, snap to nearest preset (10, 30, 50, 70)
+            if (Control.ModifierKeys == Keys.Control)
+            {
+                value = SnapToPresetSize(value);
+                // Temporarily remove handler to avoid recursion
+                trackBarFontSize.ValueChanged -= trackBarFontSize_ValueChanged;
+                trackBarFontSize.Value = value;
+                trackBarFontSize.ValueChanged += trackBarFontSize_ValueChanged;
+            }
+            
+            selectedFontSize = value;
+            lblFontSize.Text = $"Size: {selectedFontSize}pts";
+            if (flagText)
+            {
+                picBoxMain.Invalidate(); // Update preview
+            }
+        }
+
+        private static int SnapToPresetSize(int value)
+        {
+            // Preset sizes: 10, 30, 50, 70
+            int[] presets = { 10, 30, 50, 70 };
+            int nearest = presets[0];
+            int minDiff = Math.Abs(value - presets[0]);
+            
+            foreach (int preset in presets)
+            {
+                int diff = Math.Abs(value - preset);
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    nearest = preset;
+                }
+            }
+            
+            return nearest;
         }
 
         private void comboBoxFont_SelectedIndexChanged(object sender, EventArgs e)
@@ -418,14 +495,5 @@ namespace Doodle_241439P
             }
         }
 
-        private void trackBarFontSize_ValueChanged(object sender, EventArgs e)
-        {
-            selectedFontSize = trackBarFontSize.Value;
-            lblFontSize.Text = $"Size: {selectedFontSize}pts";
-            if (flagText)
-            {
-                picBoxMain.Invalidate(); // Update preview
-            }
-        }
     }
 }

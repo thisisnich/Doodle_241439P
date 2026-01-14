@@ -54,6 +54,10 @@
             trackBarBrushSize = new TrackBar();
             lblPenSize = new Label();
             lblBrushSize = new Label();
+            comboBoxFont = new ComboBox();
+            trackBarFontSize = new TrackBar();
+            lblFont = new Label();
+            lblFontSize = new Label();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).BeginInit();
             panelColor.SuspendLayout();
@@ -74,6 +78,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarPenSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
             SuspendLayout();
             // 
             // menuStrip1
@@ -119,6 +124,7 @@
             picBoxMain.MouseDown += picBoxMain_MouseDown;
             picBoxMain.MouseMove += picBoxMain_MouseMove;
             picBoxMain.MouseUp += picBoxMain_MouseUp;
+            picBoxMain.Paint += picBoxMain_Paint;
             // 
             // panelColor
             // 
@@ -304,7 +310,6 @@
             picBoxBrush.TabIndex = 18;
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
-            picBoxBrush.Paint += picBoxBrush_Paint;
             // 
             // trackBarPenSize
             // 
@@ -346,11 +351,57 @@
             lblBrushSize.TabIndex = 22;
             lblBrushSize.Text = "Brush: 8px";
             // 
+            // lblFont
+            // 
+            lblFont.AutoSize = true;
+            lblFont.Location = new Point(326, 390);
+            lblFont.Name = "lblFont";
+            lblFont.Size = new Size(38, 20);
+            lblFont.TabIndex = 23;
+            lblFont.Text = "Font:";
+            // 
+            // comboBoxFont
+            // 
+            comboBoxFont.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxFont.FormattingEnabled = true;
+            comboBoxFont.Items.AddRange(new object[] { "Arial", "Times New Roman", "Courier New", "Comic Sans MS", "Verdana" });
+            comboBoxFont.Location = new Point(370, 387);
+            comboBoxFont.Name = "comboBoxFont";
+            comboBoxFont.Size = new Size(150, 28);
+            comboBoxFont.TabIndex = 24;
+            comboBoxFont.SelectedIndex = 0;
+            comboBoxFont.SelectedIndexChanged += comboBoxFont_SelectedIndexChanged;
+            // 
+            // lblFontSize
+            // 
+            lblFontSize.AutoSize = true;
+            lblFontSize.Location = new Point(326, 425);
+            lblFontSize.Name = "lblFontSize";
+            lblFontSize.Size = new Size(68, 20);
+            lblFontSize.TabIndex = 25;
+            lblFontSize.Text = "Size: 30pts";
+            // 
+            // trackBarFontSize
+            // 
+            trackBarFontSize.Location = new Point(400, 422);
+            trackBarFontSize.Maximum = 70;
+            trackBarFontSize.Minimum = 10;
+            trackBarFontSize.Name = "trackBarFontSize";
+            trackBarFontSize.Size = new Size(150, 45);
+            trackBarFontSize.TabIndex = 26;
+            trackBarFontSize.TickFrequency = 10;
+            trackBarFontSize.Value = 30;
+            trackBarFontSize.ValueChanged += trackBarFontSize_ValueChanged;
+            // 
             // MainForm_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(914, 600);
+            Controls.Add(trackBarFontSize);
+            Controls.Add(lblFontSize);
+            Controls.Add(comboBoxFont);
+            Controls.Add(lblFont);
             Controls.Add(lblBrushSize);
             Controls.Add(lblPenSize);
             Controls.Add(trackBarBrushSize);
@@ -393,6 +444,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarPenSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -425,5 +477,9 @@
         private System.Windows.Forms.TrackBar trackBarBrushSize;
         private System.Windows.Forms.Label lblPenSize;
         private System.Windows.Forms.Label lblBrushSize;
+        private System.Windows.Forms.Label lblFont;
+        private System.Windows.Forms.ComboBox comboBoxFont;
+        private System.Windows.Forms.Label lblFontSize;
+        private System.Windows.Forms.TrackBar trackBarFontSize;
     }
 }

@@ -48,11 +48,9 @@
             picBoxClear = new PictureBox();
             picBoxErase = new PictureBox();
             picBoxText = new PictureBox();
-            picBoxPen = new PictureBox();
+            picBoxLoad = new PictureBox();
             picBoxBrush = new PictureBox();
-            trackBarPenSize = new TrackBar();
             trackBarBrushSize = new TrackBar();
-            lblPenSize = new Label();
             lblBrushSize = new Label();
             trackBarEraserSize = new TrackBar();
             lblEraserSize = new Label();
@@ -60,6 +58,9 @@
             trackBarFontSize = new TrackBar();
             lblFont = new Label();
             lblFontSize = new Label();
+            trackBarImageScale = new TrackBar();
+            lblImageScale = new Label();
+            btnStampImage = new Button();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).BeginInit();
             panelColor.SuspendLayout();
@@ -76,12 +77,12 @@
             ((System.ComponentModel.ISupportInitialize)picBoxClear).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxText).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)picBoxPen).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxLoad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarPenSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarImageScale).BeginInit();
             SuspendLayout();
             // 
             // menuStrip1
@@ -124,10 +125,10 @@
             picBoxMain.Size = new Size(724, 300);
             picBoxMain.TabIndex = 1;
             picBoxMain.TabStop = false;
+            picBoxMain.Paint += picBoxMain_Paint;
             picBoxMain.MouseDown += picBoxMain_MouseDown;
             picBoxMain.MouseMove += picBoxMain_MouseMove;
             picBoxMain.MouseUp += picBoxMain_MouseUp;
-            picBoxMain.Paint += picBoxMain_Paint;
             // 
             // panelColor
             // 
@@ -290,17 +291,17 @@
             picBoxText.TabStop = false;
             picBoxText.Click += picBoxText_Click;
             // 
-            // picBoxPen
+            // picBoxLoad
             // 
-            picBoxPen.BackColor = Color.Transparent;
-            picBoxPen.Image = Properties.Resources.pen;
-            picBoxPen.Location = new Point(852, 40);
-            picBoxPen.Name = "picBoxPen";
-            picBoxPen.Size = new Size(50, 50);
-            picBoxPen.SizeMode = PictureBoxSizeMode.StretchImage;
-            picBoxPen.TabIndex = 17;
-            picBoxPen.TabStop = false;
-            picBoxPen.Click += picBoxPen_Click;
+            picBoxLoad.BackColor = Color.Transparent;
+            picBoxLoad.Image = Properties.Resources.image;
+            picBoxLoad.Location = new Point(852, 40);
+            picBoxLoad.Name = "picBoxLoad";
+            picBoxLoad.Size = new Size(50, 50);
+            picBoxLoad.SizeMode = PictureBoxSizeMode.StretchImage;
+            picBoxLoad.TabIndex = 17;
+            picBoxLoad.TabStop = false;
+            picBoxLoad.Click += picBoxLoad_Click;
             // 
             // picBoxBrush
             // 
@@ -314,17 +315,6 @@
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
             // 
-            // trackBarPenSize
-            // 
-            trackBarPenSize.Location = new Point(740, 169);
-            trackBarPenSize.Maximum = 20;
-            trackBarPenSize.Minimum = 1;
-            trackBarPenSize.Name = "trackBarPenSize";
-            trackBarPenSize.Size = new Size(150, 56);
-            trackBarPenSize.TabIndex = 19;
-            trackBarPenSize.Value = 2;
-            trackBarPenSize.ValueChanged += trackBarPenSize_ValueChanged;
-            // 
             // trackBarBrushSize
             // 
             trackBarBrushSize.Location = new Point(740, 225);
@@ -334,9 +324,17 @@
             trackBarBrushSize.Size = new Size(150, 56);
             trackBarBrushSize.TabIndex = 20;
             trackBarBrushSize.TickFrequency = 10;
-            trackBarBrushSize.TickStyle = TickStyle.BottomRight;
             trackBarBrushSize.Value = 30;
             trackBarBrushSize.ValueChanged += trackBarBrushSize_ValueChanged;
+            // 
+            // lblBrushSize
+            // 
+            lblBrushSize.AutoSize = true;
+            lblBrushSize.Location = new Point(740, 205);
+            lblBrushSize.Name = "lblBrushSize";
+            lblBrushSize.Size = new Size(88, 20);
+            lblBrushSize.TabIndex = 22;
+            lblBrushSize.Text = "Brush: 30pts";
             // 
             // trackBarEraserSize
             // 
@@ -347,45 +345,17 @@
             trackBarEraserSize.Size = new Size(150, 56);
             trackBarEraserSize.TabIndex = 27;
             trackBarEraserSize.TickFrequency = 10;
-            trackBarEraserSize.TickStyle = TickStyle.BottomRight;
             trackBarEraserSize.Value = 30;
             trackBarEraserSize.ValueChanged += trackBarEraserSize_ValueChanged;
-            // 
-            // lblPenSize
-            // 
-            lblPenSize.AutoSize = true;
-            lblPenSize.Location = new Point(740, 149);
-            lblPenSize.Name = "lblPenSize";
-            lblPenSize.Size = new Size(63, 20);
-            lblPenSize.TabIndex = 21;
-            lblPenSize.Text = "Pen: 2px";
-            // 
-            // lblBrushSize
-            // 
-            lblBrushSize.AutoSize = true;
-            lblBrushSize.Location = new Point(740, 205);
-            lblBrushSize.Name = "lblBrushSize";
-            lblBrushSize.Size = new Size(76, 20);
-            lblBrushSize.TabIndex = 22;
-            lblBrushSize.Text = "Brush: 30pts";
             // 
             // lblEraserSize
             // 
             lblEraserSize.AutoSize = true;
             lblEraserSize.Location = new Point(740, 260);
             lblEraserSize.Name = "lblEraserSize";
-            lblEraserSize.Size = new Size(86, 20);
+            lblEraserSize.Size = new Size(92, 20);
             lblEraserSize.TabIndex = 28;
             lblEraserSize.Text = "Eraser: 30pts";
-            // 
-            // lblFont
-            // 
-            lblFont.AutoSize = true;
-            lblFont.Location = new Point(326, 390);
-            lblFont.Name = "lblFont";
-            lblFont.Size = new Size(38, 20);
-            lblFont.TabIndex = 23;
-            lblFont.Text = "Font:";
             // 
             // comboBoxFont
             // 
@@ -396,17 +366,7 @@
             comboBoxFont.Name = "comboBoxFont";
             comboBoxFont.Size = new Size(150, 28);
             comboBoxFont.TabIndex = 24;
-            comboBoxFont.SelectedIndex = 0;
             comboBoxFont.SelectedIndexChanged += comboBoxFont_SelectedIndexChanged;
-            // 
-            // lblFontSize
-            // 
-            lblFontSize.AutoSize = true;
-            lblFontSize.Location = new Point(326, 425);
-            lblFontSize.Name = "lblFontSize";
-            lblFontSize.Size = new Size(68, 20);
-            lblFontSize.TabIndex = 25;
-            lblFontSize.Text = "Size: 30pts";
             // 
             // trackBarFontSize
             // 
@@ -414,17 +374,72 @@
             trackBarFontSize.Maximum = 70;
             trackBarFontSize.Minimum = 10;
             trackBarFontSize.Name = "trackBarFontSize";
-            trackBarFontSize.Size = new Size(150, 45);
+            trackBarFontSize.Size = new Size(150, 56);
             trackBarFontSize.TabIndex = 26;
             trackBarFontSize.TickFrequency = 10;
             trackBarFontSize.Value = 30;
             trackBarFontSize.ValueChanged += trackBarFontSize_ValueChanged;
+            // 
+            // lblFont
+            // 
+            lblFont.AutoSize = true;
+            lblFont.Location = new Point(326, 390);
+            lblFont.Name = "lblFont";
+            lblFont.Size = new Size(41, 20);
+            lblFont.TabIndex = 23;
+            lblFont.Text = "Font:";
+            // 
+            // lblFontSize
+            // 
+            lblFontSize.AutoSize = true;
+            lblFontSize.Location = new Point(326, 425);
+            lblFontSize.Name = "lblFontSize";
+            lblFontSize.Size = new Size(79, 20);
+            lblFontSize.TabIndex = 25;
+            lblFontSize.Text = "Size: 30pts";
+            // 
+            // trackBarImageScale
+            // 
+            trackBarImageScale.Location = new Point(600, 379);
+            trackBarImageScale.Maximum = 200;
+            trackBarImageScale.Minimum = 50;
+            trackBarImageScale.Name = "trackBarImageScale";
+            trackBarImageScale.Size = new Size(104, 56);
+            trackBarImageScale.TabIndex = 2;
+            trackBarImageScale.TickFrequency = 25;
+            trackBarImageScale.Value = 100;
+            trackBarImageScale.Visible = false;
+            trackBarImageScale.ValueChanged += trackBarImageScale_ValueChanged;
+            // 
+            // lblImageScale
+            // 
+            lblImageScale.AutoSize = true;
+            lblImageScale.Location = new Point(600, 353);
+            lblImageScale.Name = "lblImageScale";
+            lblImageScale.Size = new Size(88, 20);
+            lblImageScale.TabIndex = 1;
+            lblImageScale.Text = "Scale: 100%";
+            lblImageScale.Visible = false;
+            // 
+            // btnStampImage
+            // 
+            btnStampImage.Location = new Point(715, 379);
+            btnStampImage.Name = "btnStampImage";
+            btnStampImage.Size = new Size(75, 35);
+            btnStampImage.TabIndex = 0;
+            btnStampImage.Text = "OK (Stamp)";
+            btnStampImage.UseVisualStyleBackColor = true;
+            btnStampImage.Visible = false;
+            btnStampImage.Click += btnStampImage_Click;
             // 
             // MainForm_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(914, 600);
+            Controls.Add(btnStampImage);
+            Controls.Add(lblImageScale);
+            Controls.Add(trackBarImageScale);
             Controls.Add(trackBarFontSize);
             Controls.Add(lblFontSize);
             Controls.Add(comboBoxFont);
@@ -432,11 +447,9 @@
             Controls.Add(lblEraserSize);
             Controls.Add(trackBarEraserSize);
             Controls.Add(lblBrushSize);
-            Controls.Add(lblPenSize);
             Controls.Add(trackBarBrushSize);
-            Controls.Add(trackBarPenSize);
             Controls.Add(picBoxBrush);
-            Controls.Add(picBoxPen);
+            Controls.Add(picBoxLoad);
             Controls.Add(picBoxText);
             Controls.Add(picBoxErase);
             Controls.Add(picBoxClear);
@@ -449,7 +462,7 @@
             Margin = new Padding(3, 4, 3, 4);
             Name = "MainForm_241439P";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Paint";
+            Text = " ";
             TopMost = true;
             Load += MainForm_241439P_Load;
             menuStrip1.ResumeLayout(false);
@@ -469,12 +482,12 @@
             ((System.ComponentModel.ISupportInitialize)picBoxClear).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxText).EndInit();
-            ((System.ComponentModel.ISupportInitialize)picBoxPen).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxLoad).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarPenSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarImageScale).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -501,11 +514,9 @@
         private System.Windows.Forms.PictureBox picBoxClear;
         private System.Windows.Forms.PictureBox picBoxErase;
         private System.Windows.Forms.PictureBox picBoxText;
-        private System.Windows.Forms.PictureBox picBoxPen;
+        private System.Windows.Forms.PictureBox picBoxLoad;
         private System.Windows.Forms.PictureBox picBoxBrush;
-        private System.Windows.Forms.TrackBar trackBarPenSize;
         private System.Windows.Forms.TrackBar trackBarBrushSize;
-        private System.Windows.Forms.Label lblPenSize;
         private System.Windows.Forms.Label lblBrushSize;
         private System.Windows.Forms.TrackBar trackBarEraserSize;
         private System.Windows.Forms.Label lblEraserSize;
@@ -513,5 +524,8 @@
         private System.Windows.Forms.ComboBox comboBoxFont;
         private System.Windows.Forms.Label lblFontSize;
         private System.Windows.Forms.TrackBar trackBarFontSize;
+        private System.Windows.Forms.TrackBar trackBarImageScale;
+        private System.Windows.Forms.Label lblImageScale;
+        private System.Windows.Forms.Button btnStampImage;
     }
 }

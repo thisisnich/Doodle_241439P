@@ -229,6 +229,9 @@ namespace Doodle_241439P
 
         private void picBoxRed_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxRed.BackColor;
             brush.Color = picBoxRed.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -238,6 +241,9 @@ namespace Doodle_241439P
 
         private void picBoxBlack_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxBlack.BackColor;
             brush.Color = picBoxBlack.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -247,6 +253,9 @@ namespace Doodle_241439P
 
         private void picBoxGreen_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxGreen.BackColor;
             brush.Color = picBoxGreen.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -256,6 +265,9 @@ namespace Doodle_241439P
 
         private void picBoxBlue_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxBlue.BackColor;
             brush.Color = picBoxBlue.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -265,6 +277,9 @@ namespace Doodle_241439P
 
         private void picBoxCyan_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxCyan.BackColor;
             brush.Color = picBoxCyan.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -274,6 +289,9 @@ namespace Doodle_241439P
 
         private void picBoxMagenta_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxMagenta.BackColor;
             brush.Color = picBoxMagenta.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -283,6 +301,9 @@ namespace Doodle_241439P
 
         private void picBoxYellow_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxYellow.BackColor;
             brush.Color = picBoxYellow.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -292,6 +313,9 @@ namespace Doodle_241439P
 
         private void picBoxOrange_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxOrange.BackColor;
             brush.Color = picBoxOrange.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -301,6 +325,9 @@ namespace Doodle_241439P
 
         private void picBoxWhite_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brushPen.Color = picBoxWhite.BackColor;
             brush.Color = picBoxWhite.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
@@ -310,6 +337,9 @@ namespace Doodle_241439P
 
         private void picBoxCustom_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             using (ColorDialog colorDialog = new ColorDialog())
             {
                 colorDialog.AllowFullOpen = true;
@@ -339,6 +369,9 @@ namespace Doodle_241439P
 
         private void picBoxErase_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             brush = new SolidBrush(picBoxMain.BackColor);
             eraserPen.Color = picBoxMain.BackColor;
             eraserPen.Width = eraserSize;
@@ -353,6 +386,9 @@ namespace Doodle_241439P
 
         private void picBoxText_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             picBoxBrushColor.Image = Properties.Resources.text;
             picBoxBrushColor.BackColor = Color.Transparent;
             flagDraw = false;
@@ -372,16 +408,119 @@ namespace Doodle_241439P
         {
             using (SaveFileDialog sfdlg = new SaveFileDialog())
             {
-                sfdlg.Title = "Save Dialog";
-                sfdlg.Filter = "Image Files(*.BMP)|*.BMP|All files (*.*)|*.*";
+                sfdlg.Title = "Save Image";
+                sfdlg.Filter = "PNG with Transparency (*.PNG)|*.PNG|GIF Image (*.GIF)|*.GIF|JPEG Image (*.JPG)|*.JPG|All files (*.*)|*.*";
+                sfdlg.FilterIndex = 1; // Default to PNG
+                
                 if (sfdlg.ShowDialog(this) == DialogResult.OK)
                 {
-                    using (Bitmap bmp = new Bitmap(picBoxMain.Width, picBoxMain.Height))
+                    try
                     {
-                        Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
-                        picBoxMain.DrawToBitmap(bmp, rect);
-                        bmp.Save(sfdlg.FileName, System.Drawing.Imaging.ImageFormat.Bmp);
-                        MessageBox.Show("File Saved Successfully");
+                        // Determine format based on filter index or file extension
+                        System.Drawing.Imaging.ImageFormat format;
+                        string extension = System.IO.Path.GetExtension(sfdlg.FileName).ToLower();
+                        bool useTransparency = false;
+
+                        // Determine format from filter index
+                        switch (sfdlg.FilterIndex)
+                        {
+                            case 1: // PNG with Transparency
+                                format = System.Drawing.Imaging.ImageFormat.Png;
+                                useTransparency = true;
+                                break;
+                            case 2: // GIF
+                                format = System.Drawing.Imaging.ImageFormat.Gif;
+                                break;
+                            case 3: // JPEG
+                                format = System.Drawing.Imaging.ImageFormat.Jpeg;
+                                break;
+                            default:
+                                // Determine from extension
+                                if (extension == ".png")
+                                {
+                                    format = System.Drawing.Imaging.ImageFormat.Png;
+                                    useTransparency = true;
+                                }
+                                else if (extension == ".gif")
+                                    format = System.Drawing.Imaging.ImageFormat.Gif;
+                                else if (extension == ".jpg" || extension == ".jpeg")
+                                    format = System.Drawing.Imaging.ImageFormat.Jpeg;
+                                else
+                                    format = System.Drawing.Imaging.ImageFormat.Png;
+                                break;
+                        }
+
+                        using (Bitmap bmp = new Bitmap(picBoxMain.Width, picBoxMain.Height))
+                        {
+                            if (useTransparency)
+                            {
+                                // For PNG with transparency: make unpainted areas transparent
+                                using (Graphics g = Graphics.FromImage(bmp))
+                                {
+                                    g.Clear(Color.Transparent); // Start with transparent background
+                                    
+                                    // Draw the canvas bitmap (which has the gray background and all drawings)
+                                    // We need to replace the gray background with transparency
+                                    for (int y = 0; y < this.bm.Height; y++)
+                                    {
+                                        for (int x = 0; x < this.bm.Width; x++)
+                                        {
+                                            Color pixelColor = this.bm.GetPixel(x, y);
+                                            // If pixel is the canvas background color (LightGray), make it transparent
+                                            if (pixelColor.R == Color.LightGray.R && 
+                                                pixelColor.G == Color.LightGray.G && 
+                                                pixelColor.B == Color.LightGray.B)
+                                            {
+                                                bmp.SetPixel(x, y, Color.Transparent);
+                                            }
+                                            else
+                                            {
+                                                bmp.SetPixel(x, y, pixelColor);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Draw any placed images on top (as overlay)
+                                    if (flagLoad && placedImages.Count > 0)
+                                    {
+                                        g.CompositingMode = CompositingMode.SourceOver;
+                                        g.CompositingQuality = CompositingQuality.HighQuality;
+                                        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                                        
+                                        foreach (PlacedImage placed in placedImages)
+                                        {
+                                            Rectangle drawBounds;
+                                            if (placed == selectedImage && imageScale != 1.0f)
+                                            {
+                                                int scaledWidth = (int)(placed.Bounds.Width * imageScale);
+                                                int scaledHeight = (int)(placed.Bounds.Height * imageScale);
+                                                int scaledX = placed.Bounds.X + (placed.Bounds.Width - scaledWidth) / 2;
+                                                int scaledY = placed.Bounds.Y + (placed.Bounds.Height - scaledHeight) / 2;
+                                                drawBounds = new Rectangle(scaledX, scaledY, scaledWidth, scaledHeight);
+                                            }
+                                            else
+                                            {
+                                                drawBounds = placed.Bounds;
+                                            }
+                                            g.DrawImage(placed.Image, drawBounds);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // For GIF and JPEG: use regular DrawToBitmap (includes canvas and overlays)
+                                Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+                                picBoxMain.DrawToBitmap(bmp, rect);
+                            }
+
+                            bmp.Save(sfdlg.FileName, format);
+                            MessageBox.Show($"File saved successfully as {format.ToString()}", "Save Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error saving file: {ex.Message}", "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -451,6 +590,9 @@ namespace Doodle_241439P
 
         private void picBoxBrush_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
             flagBrush = true;
             flagLoad = false;
             flagErase = false;
@@ -675,6 +817,8 @@ namespace Doodle_241439P
             flagBrush = true;
             flagErase = false;
             flagText = false;
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
             SetToolBorder(picBoxBrush);
 
             // Invalidate to refresh display (stamped image is now part of the bitmap)
@@ -687,6 +831,15 @@ namespace Doodle_241439P
             trackBarImageScale.Visible = show;
             lblImageScale.Visible = show;
             btnStampImage.Visible = show;
+        }
+
+        // Auto-stamp image when switching tools from load mode
+        private void AutoStampOnToolSwitch()
+        {
+            if (flagLoad && selectedImage != null)
+            {
+                StampImage(selectedImage);
+            }
         }
 
         // Handle image scale slider change

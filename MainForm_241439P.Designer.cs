@@ -50,6 +50,7 @@
             picBoxText = new PictureBox();
             picBoxLoad = new PictureBox();
             picBoxBrush = new PictureBox();
+            picBoxToolIcon = new PictureBox();
             trackBarBrushSize = new TrackBar();
             lblBrushSize = new Label();
             trackBarEraserSize = new TrackBar();
@@ -79,6 +80,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxText).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxToolIcon).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
@@ -315,9 +317,20 @@
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
             // 
+            // picBoxToolIcon
+            // 
+            picBoxToolIcon.BackColor = Color.Transparent;
+            picBoxToolIcon.Location = new Point(740, 150);
+            picBoxToolIcon.Name = "picBoxToolIcon";
+            picBoxToolIcon.Size = new Size(65, 64);
+            picBoxToolIcon.SizeMode = PictureBoxSizeMode.StretchImage;
+            picBoxToolIcon.TabIndex = 19;
+            picBoxToolIcon.TabStop = false;
+            picBoxToolIcon.Click += picBoxToolIcon_Click;
+            // 
             // trackBarBrushSize
             // 
-            trackBarBrushSize.Location = new Point(740, 225);
+            trackBarBrushSize.Location = new Point(740, 235);
             trackBarBrushSize.Maximum = 70;
             trackBarBrushSize.Minimum = 10;
             trackBarBrushSize.Name = "trackBarBrushSize";
@@ -330,7 +343,7 @@
             // lblBrushSize
             // 
             lblBrushSize.AutoSize = true;
-            lblBrushSize.Location = new Point(740, 205);
+            lblBrushSize.Location = new Point(740, 215);
             lblBrushSize.Name = "lblBrushSize";
             lblBrushSize.Size = new Size(88, 20);
             lblBrushSize.TabIndex = 22;
@@ -338,7 +351,7 @@
             // 
             // trackBarEraserSize
             // 
-            trackBarEraserSize.Location = new Point(740, 280);
+            trackBarEraserSize.Location = new Point(740, 290);
             trackBarEraserSize.Maximum = 70;
             trackBarEraserSize.Minimum = 10;
             trackBarEraserSize.Name = "trackBarEraserSize";
@@ -351,7 +364,7 @@
             // lblEraserSize
             // 
             lblEraserSize.AutoSize = true;
-            lblEraserSize.Location = new Point(740, 260);
+            lblEraserSize.Location = new Point(740, 270);
             lblEraserSize.Name = "lblEraserSize";
             lblEraserSize.Size = new Size(92, 20);
             lblEraserSize.TabIndex = 28;
@@ -416,7 +429,7 @@
             lblImageScale.AutoSize = true;
             lblImageScale.Location = new Point(600, 353);
             lblImageScale.Name = "lblImageScale";
-            lblImageScale.Size = new Size(88, 20);
+            lblImageScale.Size = new Size(87, 20);
             lblImageScale.TabIndex = 1;
             lblImageScale.Text = "Scale: 100%";
             lblImageScale.Visible = false;
@@ -448,6 +461,7 @@
             Controls.Add(trackBarEraserSize);
             Controls.Add(lblBrushSize);
             Controls.Add(trackBarBrushSize);
+            Controls.Add(picBoxToolIcon);
             Controls.Add(picBoxBrush);
             Controls.Add(picBoxLoad);
             Controls.Add(picBoxText);
@@ -484,6 +498,7 @@
             ((System.ComponentModel.ISupportInitialize)picBoxText).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxToolIcon).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
@@ -516,6 +531,7 @@
         private System.Windows.Forms.PictureBox picBoxText;
         private System.Windows.Forms.PictureBox picBoxLoad;
         private System.Windows.Forms.PictureBox picBoxBrush;
+        private System.Windows.Forms.PictureBox picBoxToolIcon;
         private System.Windows.Forms.TrackBar trackBarBrushSize;
         private System.Windows.Forms.Label lblBrushSize;
         private System.Windows.Forms.TrackBar trackBarEraserSize;

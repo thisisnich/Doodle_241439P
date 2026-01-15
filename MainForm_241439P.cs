@@ -61,6 +61,9 @@ namespace Doodle_241439P
             selectedFontName = "Arial";
             selectedFontSize = 30;
             comboBoxFont.SelectedIndex = 0;
+
+            // Initialize tool icon display (default to brush)
+            picBoxToolIcon.Image = Properties.Resources.paint_brush;
             trackBarFontSize.Value = 30;
             lblFontSize.Text = "Size: 30pts";
         }
@@ -151,7 +154,7 @@ namespace Doodle_241439P
                 int newX = e.Location.X - dragOffset.X;
                 int newY = e.Location.Y - dragOffset.Y;
                 selectedImage.Bounds = new Rectangle(newX, newY, selectedImage.Bounds.Width, selectedImage.Bounds.Height);
-                
+
                 // Redraw all placed images (preserves stamped content and other drawings)
                 // This will redraw the dragged image at its new position
                 RedrawCanvas();
@@ -315,6 +318,7 @@ namespace Doodle_241439P
             eraserPen.Color = picBoxMain.BackColor;
             eraserPen.Width = eraserSize;
             picBoxBrushColor.Image = Properties.Resources.eraser;
+            picBoxToolIcon.Image = Properties.Resources.eraser;
             flagErase = true;
             flagText = false;
             flagBrush = false;
@@ -325,6 +329,7 @@ namespace Doodle_241439P
         private void picBoxText_Click(object sender, EventArgs e)
         {
             picBoxBrushColor.Image = Properties.Resources.text;
+            picBoxToolIcon.Image = Properties.Resources.text;
             flagDraw = false;
             flagText = true;
             flagErase = false;
@@ -406,6 +411,7 @@ namespace Doodle_241439P
                         flagText = false;
                         picBoxBrushColor.Image = null;
                         picBoxBrushColor.BackColor = Color.Transparent;
+                        picBoxToolIcon.Image = Properties.Resources.image;
                         SetToolBorder(picBoxLoad);
 
                         MessageBox.Show("Image loaded. Click on canvas to place it.", "Load Image", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -427,6 +433,7 @@ namespace Doodle_241439P
             flagText = false;
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxToolIcon.Image = Properties.Resources.paint_brush;
             SetToolBorder(picBoxBrush);
         }
 
@@ -471,7 +478,7 @@ namespace Doodle_241439P
                 e.Graphics.CompositingMode = CompositingMode.SourceOver;
                 e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
                 e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                
+
                 foreach (PlacedImage placed in placedImages)
                 {
                     // Apply scaling if this is the selected image
@@ -491,7 +498,7 @@ namespace Doodle_241439P
                     e.Graphics.DrawImage(placed.Image, drawBounds);
                 }
             }
-            
+
             // Draw border around selected image in load mode
             if (flagLoad && selectedImage != null && !isDraggingImage)
             {
@@ -626,14 +633,14 @@ namespace Doodle_241439P
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.SmoothingMode = SmoothingMode.HighQuality;
-            
+
             // Draw the image - this permanently adds RGB pixels to the canvas
             g.DrawImage(image.Image, drawBounds);
             g.Dispose();
 
             // IMPORTANT: Remove from placed images list so it can't be selected/moved anymore
             placedImages.Remove(image);
-            
+
             if (selectedImage == image)
             {
                 selectedImage = null;
@@ -646,7 +653,7 @@ namespace Doodle_241439P
             flagErase = false;
             flagText = false;
             SetToolBorder(picBoxBrush);
-            
+
             // Invalidate to refresh display (stamped image is now part of the bitmap)
             picBoxMain.Invalidate();
         }
@@ -800,6 +807,10 @@ namespace Doodle_241439P
             }
         }
 
+        private void picBoxToolIcon_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 
     // Class to represent a placed image on the canvas

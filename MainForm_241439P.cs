@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Doodle_241439P.Properties;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 
 namespace Doodle_241439P
 {
@@ -34,6 +35,8 @@ namespace Doodle_241439P
         Rectangle textBounds = Rectangle.Empty;
         Point previewMousePos = new Point(-1, -1);
         float imageScale = 1.0f;  // Scale factor for selected image (1.0 = 100%)
+        Cursor? brushCursor = null;
+        Cursor? eraserCursor = null;
 
         public MainForm_241439P()
         {
@@ -70,7 +73,83 @@ namespace Doodle_241439P
 
             // Initialize text box with default text
             txtBoxText.Text = "Doodle Painting";
+
+            // Create custom cursors from icons
+            // Hot spot at bottom center (tip of brush/eraser) for better precision
+            brushCursor = CreateCursorFromBitmap(Properties.Resources.paint_brush, new Point(16, 28));
+            eraserCursor = CreateCursorFromBitmap(Properties.Resources.eraser, new Point(16, 28));
+
+            // Set initial tool to brush mode
+            flagBrush = true;
+            if (brushCursor != null)
+                picBoxMain.Cursor = brushCursor;
+            else
+                picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+            SetToolBorder(picBoxBrush);
         }
+
+        // P/Invoke declarations for creating custom cursors
+        [DllImport("user32.dll")]
+        private static extern IntPtr CreateIconIndirect(ref IconInfo icon);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetIconInfo(IntPtr hIcon, ref IconInfo pIconInfo);
+
+        [DllImport("user32.dll")]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
+        private struct IconInfo
+        {
+            public bool fIcon;
+            public int xHotspot;
+            public int yHotspot;
+            public IntPtr hbmMask;
+            public IntPtr hbmColor;
+        }
+
+        // Helper method to create a cursor from a bitmap with custom hot spot
+        private Cursor CreateCursorFromBitmap(Bitmap bitmap, Point hotSpot)
+        {
+            try
+            {
+                // Resize bitmap to 32x32 for cursor (standard size)
+                Bitmap cursorBitmap = new Bitmap(32, 32);
+                using (Graphics g = Graphics.FromImage(cursorBitmap))
+                {
+                    g.Clear(Color.Transparent);
+                    g.SmoothingMode = SmoothingMode.HighQuality;
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    // Draw the bitmap scaled to fit the cursor size
+                    g.DrawImage(bitmap, 0, 0, 32, 32);
+                }
+
+                // Get icon handle
+                IntPtr hIcon = cursorBitmap.GetHicon();
+                IconInfo tmp = new IconInfo();
+                GetIconInfo(hIcon, ref tmp);
+                tmp.xHotspot = hotSpot.X;
+                tmp.yHotspot = hotSpot.Y;
+                tmp.fIcon = false; // This is a cursor, not an icon
+
+                // Create cursor with custom hot spot
+                IntPtr hCursor = CreateIconIndirect(ref tmp);
+
+                // Clean up
+                if (tmp.hbmColor != IntPtr.Zero) DeleteObject(tmp.hbmColor);
+                if (tmp.hbmMask != IntPtr.Zero) DeleteObject(tmp.hbmMask);
+                DestroyIcon(hIcon);
+
+                return new Cursor(hCursor);
+            }
+            catch
+            {
+                // If cursor creation fails, return null to fall back to standard cursor
+                return null;
+            }
+        }
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
 
         private void picBoxMain_MouseDown(object sender, MouseEventArgs e)
         {
@@ -236,7 +315,7 @@ namespace Doodle_241439P
             brush.Color = picBoxRed.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -249,7 +328,7 @@ namespace Doodle_241439P
             brush.Color = picBoxBlack.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -262,7 +341,7 @@ namespace Doodle_241439P
             brush.Color = picBoxGreen.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -275,7 +354,7 @@ namespace Doodle_241439P
             brush.Color = picBoxBlue.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -288,7 +367,7 @@ namespace Doodle_241439P
             brush.Color = picBoxCyan.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -314,7 +393,7 @@ namespace Doodle_241439P
             brush.Color = picBoxYellow.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -327,7 +406,7 @@ namespace Doodle_241439P
             brush.Color = picBoxOrange.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -340,7 +419,7 @@ namespace Doodle_241439P
             brush.Color = picBoxWhite.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
         }
 
@@ -362,7 +441,7 @@ namespace Doodle_241439P
                     picBoxBrushColor.BackColor = brushPen.Color;
                     picBoxCustom.BackColor = colorDialog.Color;
                     picBoxBrushColor.Image = null;
-                    picBoxMain.Cursor = Cursors.Default;
+                    picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
                     flagErase = false;
                 }
             }
@@ -391,7 +470,7 @@ namespace Doodle_241439P
             flagText = false;
             flagBrush = false;
             flagLoad = false;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = eraserCursor ?? Cursors.Cross;
             SetToolBorder(picBoxErase);
         }
 
@@ -411,7 +490,7 @@ namespace Doodle_241439P
                 txtBoxText.Text = "Doodle Painting";
             strText = txtBoxText.Text;
             textBounds = Rectangle.Empty; // Reset text bounds when entering text mode
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = Cursors.IBeam;
             SetToolBorder(picBoxText);
             picBoxMain.Invalidate(); // Trigger preview
         }
@@ -611,7 +690,7 @@ namespace Doodle_241439P
             flagText = false;
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxMain.Cursor = Cursors.Default;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             SetToolBorder(picBoxBrush);
         }
 

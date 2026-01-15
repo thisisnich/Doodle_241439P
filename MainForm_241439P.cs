@@ -236,6 +236,7 @@ namespace Doodle_241439P
             brush.Color = picBoxRed.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -248,6 +249,7 @@ namespace Doodle_241439P
             brush.Color = picBoxBlack.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -260,6 +262,7 @@ namespace Doodle_241439P
             brush.Color = picBoxGreen.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -272,6 +275,7 @@ namespace Doodle_241439P
             brush.Color = picBoxBlue.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -284,6 +288,7 @@ namespace Doodle_241439P
             brush.Color = picBoxCyan.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -296,6 +301,7 @@ namespace Doodle_241439P
             brush.Color = picBoxMagenta.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -308,6 +314,7 @@ namespace Doodle_241439P
             brush.Color = picBoxYellow.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -320,6 +327,7 @@ namespace Doodle_241439P
             brush.Color = picBoxOrange.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -332,6 +340,7 @@ namespace Doodle_241439P
             brush.Color = picBoxWhite.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
         }
 
@@ -353,6 +362,7 @@ namespace Doodle_241439P
                     picBoxBrushColor.BackColor = brushPen.Color;
                     picBoxCustom.BackColor = colorDialog.Color;
                     picBoxBrushColor.Image = null;
+                    picBoxMain.Cursor = Cursors.Default;
                     flagErase = false;
                 }
             }
@@ -381,6 +391,7 @@ namespace Doodle_241439P
             flagText = false;
             flagBrush = false;
             flagLoad = false;
+            picBoxMain.Cursor = Cursors.Default;
             SetToolBorder(picBoxErase);
         }
 
@@ -400,6 +411,7 @@ namespace Doodle_241439P
                 txtBoxText.Text = "Doodle Painting";
             strText = txtBoxText.Text;
             textBounds = Rectangle.Empty; // Reset text bounds when entering text mode
+            picBoxMain.Cursor = Cursors.Default;
             SetToolBorder(picBoxText);
             picBoxMain.Invalidate(); // Trigger preview
         }
@@ -599,6 +611,7 @@ namespace Doodle_241439P
             flagText = false;
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxMain.Cursor = Cursors.Default;
             SetToolBorder(picBoxBrush);
         }
 

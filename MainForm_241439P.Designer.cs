@@ -126,7 +126,7 @@ namespace Doodle_241439P
             picBoxMain.BackColor = Color.LightGray;
             picBoxMain.Location = new Point(10, 40);
             picBoxMain.Name = "picBoxMain";
-            picBoxMain.Size = new Size(724, 300);
+            picBoxMain.Size = new Size(724, 410);
             picBoxMain.TabIndex = 1;
             picBoxMain.TabStop = false;
             picBoxMain.Paint += picBoxMain_Paint;
@@ -147,9 +147,9 @@ namespace Doodle_241439P
             panelColor.Controls.Add(picBoxYellow);
             panelColor.Controls.Add(picBoxWhite);
             panelColor.Controls.Add(picBoxCustom);
-            panelColor.Location = new Point(10, 350);
+            panelColor.Location = new Point(11, 463);
             panelColor.Name = "panelColor";
-            panelColor.Size = new Size(350, 70);
+            panelColor.Size = new Size(253, 70);
             panelColor.TabIndex = 2;
             // 
             // picBoxBrushColor
@@ -268,7 +268,7 @@ namespace Doodle_241439P
             // 
             // txtBoxText
             // 
-            txtBoxText.Location = new Point(326, 356);
+            txtBoxText.Location = new Point(270, 469);
             txtBoxText.Name = "txtBoxText";
             txtBoxText.Size = new Size(200, 27);
             txtBoxText.TabIndex = 12;
@@ -393,15 +393,15 @@ namespace Doodle_241439P
             comboBoxFont.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxFont.FormattingEnabled = true;
             comboBoxFont.Items.AddRange(new object[] { "Arial", "Times New Roman", "Courier New", "Comic Sans MS", "Verdana" });
-            comboBoxFont.Location = new Point(370, 387);
+            comboBoxFont.Location = new Point(308, 504);
             comboBoxFont.Name = "comboBoxFont";
-            comboBoxFont.Size = new Size(150, 28);
+            comboBoxFont.Size = new Size(162, 28);
             comboBoxFont.TabIndex = 24;
             comboBoxFont.SelectedIndexChanged += comboBoxFont_SelectedIndexChanged;
             // 
             // trackBarFontSize
             // 
-            trackBarFontSize.Location = new Point(400, 422);
+            trackBarFontSize.Location = new Point(334, 546);
             trackBarFontSize.Maximum = 70;
             trackBarFontSize.Minimum = 10;
             trackBarFontSize.Name = "trackBarFontSize";
@@ -414,7 +414,7 @@ namespace Doodle_241439P
             // lblFont
             // 
             lblFont.AutoSize = true;
-            lblFont.Location = new Point(326, 390);
+            lblFont.Location = new Point(270, 507);
             lblFont.Name = "lblFont";
             lblFont.Size = new Size(41, 20);
             lblFont.TabIndex = 23;
@@ -423,7 +423,7 @@ namespace Doodle_241439P
             // lblFontSize
             // 
             lblFontSize.AutoSize = true;
-            lblFontSize.Location = new Point(326, 425);
+            lblFontSize.Location = new Point(270, 546);
             lblFontSize.Name = "lblFontSize";
             lblFontSize.Size = new Size(79, 20);
             lblFontSize.TabIndex = 25;
@@ -431,11 +431,11 @@ namespace Doodle_241439P
             // 
             // trackBarImageScale
             // 
-            trackBarImageScale.Location = new Point(600, 379);
+            trackBarImageScale.Location = new Point(740, 394);
             trackBarImageScale.Maximum = 200;
             trackBarImageScale.Minimum = 50;
             trackBarImageScale.Name = "trackBarImageScale";
-            trackBarImageScale.Size = new Size(104, 56);
+            trackBarImageScale.Size = new Size(174, 56);
             trackBarImageScale.TabIndex = 2;
             trackBarImageScale.TickFrequency = 25;
             trackBarImageScale.Value = 100;
@@ -445,18 +445,19 @@ namespace Doodle_241439P
             // lblImageScale
             // 
             lblImageScale.AutoSize = true;
-            lblImageScale.Location = new Point(600, 353);
+            lblImageScale.Location = new Point(745, 368);
             lblImageScale.Name = "lblImageScale";
             lblImageScale.Size = new Size(87, 20);
             lblImageScale.TabIndex = 1;
             lblImageScale.Text = "Scale: 100%";
             lblImageScale.Visible = false;
+            lblImageScale.Click += lblImageScale_Click;
             // 
             // btnStampImage
             // 
-            btnStampImage.Location = new Point(715, 379);
+            btnStampImage.Location = new Point(832, 353);
             btnStampImage.Name = "btnStampImage";
-            btnStampImage.Size = new Size(75, 35);
+            btnStampImage.Size = new Size(82, 35);
             btnStampImage.TabIndex = 0;
             btnStampImage.Text = "OK (Stamp)";
             btnStampImage.UseVisualStyleBackColor = true;
@@ -467,7 +468,7 @@ namespace Doodle_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(914, 600);
+            ClientSize = new Size(914, 587);
             Controls.Add(btnStampImage);
             Controls.Add(lblImageScale);
             Controls.Add(trackBarImageScale);

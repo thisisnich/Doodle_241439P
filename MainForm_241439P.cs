@@ -411,7 +411,7 @@ namespace Doodle_241439P
                 sfdlg.Title = "Save Image";
                 sfdlg.Filter = "PNG with Transparency (*.PNG)|*.PNG|GIF Image (*.GIF)|*.GIF|JPEG Image (*.JPG)|*.JPG|All files (*.*)|*.*";
                 sfdlg.FilterIndex = 1; // Default to PNG
-                
+
                 if (sfdlg.ShowDialog(this) == DialogResult.OK)
                 {
                     try
@@ -458,7 +458,7 @@ namespace Doodle_241439P
                                 using (Graphics g = Graphics.FromImage(bmp))
                                 {
                                     g.Clear(Color.Transparent); // Start with transparent background
-                                    
+
                                     // Draw the canvas bitmap (which has the gray background and all drawings)
                                     // We need to replace the gray background with transparency
                                     for (int y = 0; y < this.bm.Height; y++)
@@ -467,8 +467,8 @@ namespace Doodle_241439P
                                         {
                                             Color pixelColor = this.bm.GetPixel(x, y);
                                             // If pixel is the canvas background color (LightGray), make it transparent
-                                            if (pixelColor.R == Color.LightGray.R && 
-                                                pixelColor.G == Color.LightGray.G && 
+                                            if (pixelColor.R == Color.LightGray.R &&
+                                                pixelColor.G == Color.LightGray.G &&
                                                 pixelColor.B == Color.LightGray.B)
                                             {
                                                 bmp.SetPixel(x, y, Color.Transparent);
@@ -479,14 +479,14 @@ namespace Doodle_241439P
                                             }
                                         }
                                     }
-                                    
+
                                     // Draw any placed images on top (as overlay)
                                     if (flagLoad && placedImages.Count > 0)
                                     {
                                         g.CompositingMode = CompositingMode.SourceOver;
                                         g.CompositingQuality = CompositingQuality.HighQuality;
                                         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                                        
+
                                         foreach (PlacedImage placed in placedImages)
                                         {
                                             Rectangle drawBounds;
@@ -983,6 +983,10 @@ namespace Doodle_241439P
             }
         }
 
+        private void lblImageScale_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 
     // Class to represent a placed image on the canvas

@@ -52,7 +52,6 @@ namespace Doodle_241439P
             picBoxText = new PictureBox();
             picBoxLoad = new PictureBox();
             picBoxBrush = new PictureBox();
-            picBoxToolIcon = new PictureBox();
             trackBarBrushSize = new TrackBar();
             lblBrushSize = new Label();
             trackBarEraserSize = new TrackBar();
@@ -84,7 +83,6 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)picBoxToolIcon).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
@@ -160,6 +158,7 @@ namespace Doodle_241439P
             picBoxBrushColor.Location = new Point(3, 3);
             picBoxBrushColor.Name = "picBoxBrushColor";
             picBoxBrushColor.Size = new Size(65, 64);
+            picBoxBrushColor.SizeMode = PictureBoxSizeMode.StretchImage;
             picBoxBrushColor.TabIndex = 3;
             picBoxBrushColor.TabStop = false;
             // 
@@ -347,17 +346,6 @@ namespace Doodle_241439P
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
             // 
-            // picBoxToolIcon
-            // 
-            picBoxToolIcon.BackColor = Color.Transparent;
-            picBoxToolIcon.Location = new Point(740, 150);
-            picBoxToolIcon.Name = "picBoxToolIcon";
-            picBoxToolIcon.Size = new Size(65, 64);
-            picBoxToolIcon.SizeMode = PictureBoxSizeMode.StretchImage;
-            picBoxToolIcon.TabIndex = 19;
-            picBoxToolIcon.TabStop = false;
-            picBoxToolIcon.Click += picBoxToolIcon_Click;
-            // 
             // trackBarBrushSize
             // 
             trackBarBrushSize.Location = new Point(740, 235);
@@ -491,7 +479,6 @@ namespace Doodle_241439P
             Controls.Add(trackBarEraserSize);
             Controls.Add(lblBrushSize);
             Controls.Add(trackBarBrushSize);
-            Controls.Add(picBoxToolIcon);
             Controls.Add(picBoxBrush);
             Controls.Add(picBoxLoad);
             Controls.Add(picBoxText);
@@ -530,7 +517,6 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
-            ((System.ComponentModel.ISupportInitialize)picBoxToolIcon).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
@@ -565,7 +551,6 @@ namespace Doodle_241439P
         private System.Windows.Forms.PictureBox picBoxText;
         private System.Windows.Forms.PictureBox picBoxLoad;
         private System.Windows.Forms.PictureBox picBoxBrush;
-        private System.Windows.Forms.PictureBox picBoxToolIcon;
         private System.Windows.Forms.TrackBar trackBarBrushSize;
         private System.Windows.Forms.Label lblBrushSize;
         private System.Windows.Forms.TrackBar trackBarEraserSize;

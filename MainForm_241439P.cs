@@ -62,10 +62,14 @@ namespace Doodle_241439P
             selectedFontSize = 30;
             comboBoxFont.SelectedIndex = 0;
 
-            // Initialize tool icon display (default to brush)
-            picBoxToolIcon.Image = Properties.Resources.paint_brush;
+            // Initialize brush color display (default to brush with black color)
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
             trackBarFontSize.Value = 30;
             lblFontSize.Text = "Size: 30pts";
+
+            // Initialize text box with default text
+            txtBoxText.Text = "Doodle Painting";
         }
 
         private void picBoxMain_MouseDown(object sender, MouseEventArgs e)
@@ -228,8 +232,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxRed.BackColor;
             brush.Color = picBoxRed.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -238,8 +241,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxBlack.BackColor;
             brush.Color = picBoxBlack.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -248,8 +250,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxGreen.BackColor;
             brush.Color = picBoxGreen.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -258,8 +259,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxBlue.BackColor;
             brush.Color = picBoxBlue.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -268,8 +268,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxCyan.BackColor;
             brush.Color = picBoxCyan.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -278,8 +277,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxMagenta.BackColor;
             brush.Color = picBoxMagenta.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -288,8 +286,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxYellow.BackColor;
             brush.Color = picBoxYellow.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -298,8 +295,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxOrange.BackColor;
             brush.Color = picBoxOrange.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -308,8 +304,7 @@ namespace Doodle_241439P
             brushPen.Color = picBoxWhite.BackColor;
             brush.Color = picBoxWhite.BackColor;
             picBoxBrushColor.BackColor = brushPen.Color;
-            if (!flagText)
-                picBoxBrushColor.Image = null;
+            picBoxBrushColor.Image = null;
             flagErase = false;
         }
 
@@ -327,8 +322,7 @@ namespace Doodle_241439P
                     brush.Color = colorDialog.Color;
                     picBoxBrushColor.BackColor = brushPen.Color;
                     picBoxCustom.BackColor = colorDialog.Color;
-                    if (!flagText)
-                        picBoxBrushColor.Image = null;
+                    picBoxBrushColor.Image = null;
                     flagErase = false;
                 }
             }
@@ -349,7 +343,7 @@ namespace Doodle_241439P
             eraserPen.Color = picBoxMain.BackColor;
             eraserPen.Width = eraserSize;
             picBoxBrushColor.Image = Properties.Resources.eraser;
-            picBoxToolIcon.Image = Properties.Resources.eraser;
+            picBoxBrushColor.BackColor = Color.Transparent;
             flagErase = true;
             flagText = false;
             flagBrush = false;
@@ -360,7 +354,7 @@ namespace Doodle_241439P
         private void picBoxText_Click(object sender, EventArgs e)
         {
             picBoxBrushColor.Image = Properties.Resources.text;
-            picBoxToolIcon.Image = Properties.Resources.text;
+            picBoxBrushColor.BackColor = Color.Transparent;
             flagDraw = false;
             flagText = true;
             flagErase = false;
@@ -440,9 +434,8 @@ namespace Doodle_241439P
                         flagBrush = false;
                         flagErase = false;
                         flagText = false;
-                        picBoxBrushColor.Image = null;
+                        picBoxBrushColor.Image = Properties.Resources.image;
                         picBoxBrushColor.BackColor = Color.Transparent;
-                        picBoxToolIcon.Image = Properties.Resources.image;
                         SetToolBorder(picBoxLoad);
 
                         MessageBox.Show("Image loaded. Click on canvas to place it.", "Load Image", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -464,7 +457,6 @@ namespace Doodle_241439P
             flagText = false;
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxToolIcon.Image = Properties.Resources.paint_brush;
             SetToolBorder(picBoxBrush);
         }
 
@@ -838,10 +830,6 @@ namespace Doodle_241439P
             }
         }
 
-        private void picBoxToolIcon_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 
     // Class to represent a placed image on the canvas

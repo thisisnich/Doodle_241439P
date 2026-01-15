@@ -1,4 +1,4 @@
-﻿namespace Doodle_241439P
+namespace Doodle_241439P
 {
     partial class MainForm_241439P
     {
@@ -43,6 +43,8 @@
             picBoxOrange = new PictureBox();
             picBoxMagenta = new PictureBox();
             picBoxYellow = new PictureBox();
+            picBoxWhite = new PictureBox();
+            picBoxCustom = new PictureBox();
             txtBoxText = new TextBox();
             picBoxSave = new PictureBox();
             picBoxClear = new PictureBox();
@@ -74,6 +76,8 @@
             ((System.ComponentModel.ISupportInitialize)picBoxOrange).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxMagenta).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxYellow).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxWhite).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxCustom).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxSave).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxClear).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).BeginInit();
@@ -143,9 +147,11 @@
             panelColor.Controls.Add(picBoxOrange);
             panelColor.Controls.Add(picBoxMagenta);
             panelColor.Controls.Add(picBoxYellow);
+            panelColor.Controls.Add(picBoxWhite);
+            panelColor.Controls.Add(picBoxCustom);
             panelColor.Location = new Point(10, 350);
             panelColor.Name = "panelColor";
-            panelColor.Size = new Size(310, 70);
+            panelColor.Size = new Size(350, 70);
             panelColor.TabIndex = 2;
             // 
             // picBoxBrushColor
@@ -236,6 +242,30 @@
             picBoxYellow.TabIndex = 10;
             picBoxYellow.TabStop = false;
             picBoxYellow.Click += picBoxYellow_Click;
+            // 
+            // picBoxWhite
+            // 
+            picBoxWhite.BackColor = Color.White;
+            picBoxWhite.BorderStyle = BorderStyle.FixedSingle;
+            picBoxWhite.Location = new Point(218, 3);
+            picBoxWhite.Name = "picBoxWhite";
+            picBoxWhite.Size = new Size(30, 30);
+            picBoxWhite.TabIndex = 12;
+            picBoxWhite.TabStop = false;
+            picBoxWhite.Click += picBoxWhite_Click;
+            // 
+            // picBoxCustom
+            // 
+            picBoxCustom.BackColor = Color.FromArgb(128, 128, 128);
+            picBoxCustom.BorderStyle = BorderStyle.FixedSingle;
+            picBoxCustom.Image = Properties.Resources.eyedropper;
+            picBoxCustom.Location = new Point(218, 37);
+            picBoxCustom.Name = "picBoxCustom";
+            picBoxCustom.Size = new Size(30, 30);
+            picBoxCustom.SizeMode = PictureBoxSizeMode.StretchImage;
+            picBoxCustom.TabIndex = 13;
+            picBoxCustom.TabStop = false;
+            picBoxCustom.Click += picBoxCustom_Click;
             // 
             // txtBoxText
             // 
@@ -492,6 +522,8 @@
             ((System.ComponentModel.ISupportInitialize)picBoxOrange).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxMagenta).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxYellow).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxWhite).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxCustom).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxSave).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxClear).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).EndInit();
@@ -524,6 +556,8 @@
         private System.Windows.Forms.PictureBox picBoxMagenta;
         private System.Windows.Forms.PictureBox picBoxYellow;
         private System.Windows.Forms.PictureBox picBoxOrange;
+        private System.Windows.Forms.PictureBox picBoxWhite;
+        private System.Windows.Forms.PictureBox picBoxCustom;
         private System.Windows.Forms.TextBox txtBoxText;
         private System.Windows.Forms.PictureBox picBoxSave;
         private System.Windows.Forms.PictureBox picBoxClear;

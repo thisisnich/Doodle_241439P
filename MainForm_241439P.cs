@@ -303,6 +303,37 @@ namespace Doodle_241439P
             flagErase = false;
         }
 
+        private void picBoxWhite_Click(object sender, EventArgs e)
+        {
+            brushPen.Color = picBoxWhite.BackColor;
+            brush.Color = picBoxWhite.BackColor;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            if (!flagText)
+                picBoxBrushColor.Image = null;
+            flagErase = false;
+        }
+
+        private void picBoxCustom_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                colorDialog.AllowFullOpen = true;
+                colorDialog.FullOpen = true;
+                colorDialog.Color = brushPen.Color;
+
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    brushPen.Color = colorDialog.Color;
+                    brush.Color = colorDialog.Color;
+                    picBoxBrushColor.BackColor = brushPen.Color;
+                    picBoxCustom.BackColor = colorDialog.Color;
+                    if (!flagText)
+                        picBoxBrushColor.Image = null;
+                    flagErase = false;
+                }
+            }
+        }
+
         private void picBoxClear_Click(object sender, EventArgs e)
         {
             g = Graphics.FromImage(bm);

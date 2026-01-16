@@ -37,6 +37,10 @@ namespace Doodle_241439P
         float imageScale = 1.0f;  // Scale factor for selected image (1.0 = 100%)
         Cursor? brushCursor = null;
         Cursor? eraserCursor = null;
+        
+        // Undo functionality
+        private Stack<Bitmap> undoStack = new Stack<Bitmap>();
+        private const int MAX_UNDO_LEVELS = 20;
 
         public MainForm_241439P()
         {
@@ -55,9 +59,68 @@ namespace Doodle_241439P
             // Handler for admin number menu item
         }
 
+        // Save current bitmap state to undo stack
+        private void SaveUndoState()
+        {
+            if (bm == null) return;
+
+            // Limit undo stack size
+            if (undoStack.Count >= MAX_UNDO_LEVELS)
+            {
+                // Remove oldest item (at bottom of stack)
+                var items = undoStack.ToArray();
+                undoStack.Clear();
+                for (int i = 1; i < items.Length; i++)
+                {
+                    undoStack.Push(items[i]);
+                }
+            }
+
+            // Save a copy of current bitmap
+            undoStack.Push((Bitmap)bm.Clone());
+        }
+
+        // Restore previous bitmap state
+        private void PerformUndo()
+        {
+            if (undoStack.Count == 0)
+            {
+                MessageBox.Show("Nothing to undo!", "Undo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Restore previous state
+            Bitmap previousState = undoStack.Pop();
+            if (bm != null)
+            {
+                bm.Dispose();
+            }
+            bm = previousState;
+            picBoxMain.Image = bm;
+            picBoxMain.Invalidate();
+        }
+
+        // Override keyboard handler to intercept Ctrl+Z
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.Z))
+            {
+                PerformUndo();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         private void MainForm_241439P_Load(object sender, EventArgs e)
         {
             bm = new Bitmap(picBoxMain.Width, picBoxMain.Height);
+            
+            // Fill with initial background color
+            using (Graphics g = Graphics.FromImage(bm))
+            {
+                g.Clear(Color.LightGray);
+            }
+            
             picBoxMain.Image = bm;
 
             // Initialize font and size
@@ -169,6 +232,7 @@ namespace Doodle_241439P
                     if (string.IsNullOrEmpty(strText))
                         strText = "Doodle Painting";
 
+                    SaveUndoState();  // Save state before placing text
                     textPosition = e.Location;
                     DrawTextOnCanvas();
                     picBoxMain.Invalidate();
@@ -181,6 +245,7 @@ namespace Doodle_241439P
             {
                 if (e.Button == MouseButtons.Left)
                 {
+                    SaveUndoState();  // Save state before drawing/erasing
                     flagDraw = true;
                     endP = e.Location; // Initialize endP for continuous drawing
                 }
@@ -449,6 +514,7 @@ namespace Doodle_241439P
 
         private void picBoxClear_Click(object sender, EventArgs e)
         {
+            SaveUndoState();  // Save state before clearing
             g = Graphics.FromImage(bm);
             Rectangle rect = picBoxMain.ClientRectangle;
             g.FillRectangle(new SolidBrush(Color.LightGray), rect);
@@ -623,7 +689,7 @@ namespace Doodle_241439P
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
                 ofd.Title = "Load Image";
-                ofd.Filter = "Image Files(*.BMP;*.PNG;*.JPG;*.JPEG)|*.BMP;*.PNG;*.JPG;*.JPEG|BMP Files(*.BMP)|*.BMP|PNG Files(*.PNG)|*.PNG|JPEG Files(*.JPG;*.JPEG)|*.JPG;*.JPEG|All files (*.*)|*.*";
+                ofd.Filter = "Image Files(*.BMP;*.PNG;*.JPG;*.JPEG;*.GIF)|*.BMP;*.PNG;*.JPG;*.JPEG;*.GIF|BMP Files(*.BMP)|*.BMP|PNG Files(*.PNG)|*.PNG|JPEG Files(*.JPG;*.JPEG)|*.JPG;*.JPEG|GIF Files(*.GIF)|*.GIF|All files (*.*)|*.*";
                 ofd.FilterIndex = 1;
 
                 if (ofd.ShowDialog() == DialogResult.OK)
@@ -649,7 +715,7 @@ namespace Doodle_241439P
                         }
                         else
                         {
-                            // BMP, JPG, JPEG - load normally
+                            // BMP, JPG, JPEG, GIF - load normally
                             originalImage = new Bitmap(filePath);
                         }
 
@@ -867,6 +933,8 @@ namespace Doodle_241439P
         private void StampImage(PlacedImage image)
         {
             if (bm == null || image == null) return;
+
+            SaveUndoState();  // Save state before stamping image
 
             // Calculate the actual bounds to draw (with scaling if selected)
             Rectangle drawBounds;

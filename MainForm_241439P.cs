@@ -30,12 +30,15 @@ namespace Doodle_241439P
         bool flagErase = false;
         bool flagText = false;
         bool flagBrush = false;
+        bool flagFill = false;  // Paint fill/bucket tool
         bool flagLoad = false;  // Load/picture select mode
+        bool flagEmoji = false;  // Emoji placement mode
         bool flagLine = false;
         bool flagSquare = false;
         bool flagCircle = false;
         bool flagNgon = false;
         Bitmap? loadedImage = null;  // Currently loaded image to place
+        string emojiText = "💀";  // Default emoji text
         List<PlacedImage> placedImages = new List<PlacedImage>();  // All placed images on canvas
         PlacedImage? selectedImage = null;  // Currently selected image for dragging/resizing
         bool isDraggingImage = false;
@@ -151,12 +154,15 @@ namespace Doodle_241439P
             selectedFontName = "Arial";
             selectedFontSize = 30;
 
-            // Initialize brush color display (default to brush with black color)
-            picBoxBrushColor.Image = null;
-            picBoxBrushColor.BackColor = brushPen.Color;
+            // Initialize brush color display (default to brush with paint brush icon)
+            picBoxBrushColor.Image = Properties.Resources.paint_brush;
+            picBoxBrushColor.BackColor = Color.Transparent;
 
             // Initialize text box with default text
             txtBoxText.Text = "Doodle Painting";
+
+            // Initialize emoji text (default)
+            emojiText = "💀";
 
             // Initialize N-gon trackbar
             trackBarNgonSides.Value = 5;
@@ -173,7 +179,7 @@ namespace Doodle_241439P
 
             // Initialize unified slider (defaults to brush size)
             UpdateUnifiedSlider();
-            
+
             // Initialize unified ComboBox (defaults to brush type)
             UpdateUnifiedComboBox();
 
@@ -284,6 +290,15 @@ namespace Doodle_241439P
                     // User can switch to Brush or Pen tool to draw
                 }
             }
+            else if (flagFill)
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    SaveUndoState();  // Save state before filling
+                    PerformFloodFill(e.Location);
+                    picBoxMain.Invalidate();
+                }
+            }
             else if (flagBrush || flagErase)
             {
                 if (e.Button == MouseButtons.Left)
@@ -303,47 +318,89 @@ namespace Doodle_241439P
                     shapeEndPoint = e.Location;
                 }
             }
-            else if (flagLoad)
+            else if (flagLoad || flagEmoji)
             {
                 if (e.Button == MouseButtons.Left)
                 {
-                    // Check if clicking on an existing image
-                    selectedImage = GetImageAtPoint(e.Location);
+                    // Check if clicking on an existing image/emoji
+                    PlacedImage? clickedImage = GetImageAtPoint(e.Location);
 
-                    if (selectedImage != null)
+                    if (clickedImage != null)
                     {
-                        // Check if clicking on the selected image to drag it
-                        if (GetScaledBounds(selectedImage).Contains(e.Location))
+                        // Clicking on an existing image/emoji
+                        Rectangle bounds = GetScaledBounds(clickedImage);
+                        if (bounds.Contains(e.Location))
                         {
-                            // Start dragging
+                            // Clicking on the image - select it and start dragging
+                            selectedImage = clickedImage;
                             isDraggingImage = true;
-                            dragOffset = new Point(e.Location.X - selectedImage.Bounds.X,
-                                                   e.Location.Y - selectedImage.Bounds.Y);
+                            // Calculate offset from click position to the actual image bounds (not scaled)
+                            // This ensures dragging works correctly regardless of scale
+                            dragOffset = new Point(e.Location.X - clickedImage.Bounds.X,
+                                                   e.Location.Y - clickedImage.Bounds.Y);
+                            ShowImageControls(true);
                             UpdateUnifiedSlider(); // Update slider when image is selected
-                        }
-                        else
-                        {
-                            // Clicked outside selected image - deselect it
-                            selectedImage = null;
-                            ShowImageControls(false);
-                            UpdateUnifiedSlider(); // Update slider when image is deselected
                             picBoxMain.Invalidate();
                         }
                     }
-                    else if (loadedImage != null)
+                    else
                     {
-                        // Stamp any existing selected image first
-                        if (selectedImage != null)
+                        // Clicking on empty space
+                        if (flagLoad && loadedImage != null)
                         {
-                            StampImage(selectedImage);
-                        }
+                            // Stamp any existing selected image first
+                            if (selectedImage != null)
+                            {
+                                StampImage(selectedImage);
+                            }
 
-                        // Place new image at click position
-                        PlaceNewImage(loadedImage, e.Location);
-                        selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed image
-                        imageScale = 1.0f; // Reset scale
-                        ShowImageControls(true);
-                        UpdateUnifiedSlider(); // Update slider when new image is placed
+                            // Place new image at click position
+                            PlaceNewImage(loadedImage, e.Location);
+                            selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed image
+                            imageScale = 1.0f; // Reset scale
+                            ShowImageControls(true);
+                            UpdateUnifiedSlider(); // Update slider when new image is placed
+                        }
+                        else if (flagEmoji && !string.IsNullOrEmpty(emojiText))
+                        {
+                            // For emoji mode, only allow one emoji at a time
+                            // Remove any existing emojis first
+                            if (placedImages.Count > 0)
+                            {
+                                // Find and remove all existing emojis (they're in placedImages)
+                                // We'll identify them by checking if they're currently selected or by removing all
+                                List<PlacedImage> emojisToRemove = new List<PlacedImage>(placedImages);
+                                foreach (PlacedImage img in emojisToRemove)
+                                {
+                                    if (selectedImage == img)
+                                    {
+                                        selectedImage = null;
+                                    }
+                                    placedImages.Remove(img);
+                                    img.Image.Dispose(); // Clean up the bitmap
+                                }
+                                RedrawCanvas();
+                            }
+
+                            // Convert emoji to bitmap and place it
+                            Bitmap emojiBitmap = CreateEmojiBitmap(emojiText, selectedFontSize * 2);
+                            PlaceNewImage(emojiBitmap, e.Location);
+                            selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed emoji
+                            imageScale = 1.0f; // Reset scale
+                            ShowImageControls(true);
+                            UpdateUnifiedSlider(); // Update slider when new emoji is placed
+                        }
+                        else
+                        {
+                            // No image/emoji to place, just deselect
+                            if (selectedImage != null)
+                            {
+                                selectedImage = null;
+                                ShowImageControls(false);
+                                UpdateUnifiedSlider();
+                                picBoxMain.Invalidate();
+                            }
+                        }
                     }
                 }
             }
@@ -351,11 +408,17 @@ namespace Doodle_241439P
 
         private void picBoxMain_MouseMove(object sender, MouseEventArgs e)
         {
-            if (flagLoad && isDraggingImage && selectedImage != null)
+            if ((flagLoad || flagEmoji) && isDraggingImage && selectedImage != null)
             {
-                // Update image position
+                // Update image position using the drag offset
+                Rectangle bounds = GetScaledBounds(selectedImage);
                 int newX = e.Location.X - dragOffset.X;
                 int newY = e.Location.Y - dragOffset.Y;
+                
+                // Keep image within canvas bounds (optional, but helpful)
+                newX = Math.Max(0, Math.Min(newX, picBoxMain.Width - bounds.Width));
+                newY = Math.Max(0, Math.Min(newY, picBoxMain.Height - bounds.Height));
+                
                 selectedImage.Bounds = new Rectangle(newX, newY, selectedImage.Bounds.Width, selectedImage.Bounds.Height);
 
                 // Redraw all placed images (preserves stamped content and other drawings)
@@ -410,7 +473,7 @@ namespace Doodle_241439P
                 shapeEndPoint = e.Location;
                 picBoxMain.Invalidate(); // Trigger Paint event to show preview
             }
-            else if (flagLoad)
+            else if (flagLoad || flagEmoji)
             {
                 // Update cursor when hovering over images/resize handles
                 UpdateCursorForImageMode(e.Location);
@@ -552,6 +615,32 @@ namespace Doodle_241439P
             flagErase = false;
         }
 
+        private void picBoxPurple_Click(object sender, EventArgs e)
+        {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
+            brushPen.Color = picBoxPurple.BackColor;
+            brush.Color = picBoxPurple.BackColor;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+            flagErase = false;
+        }
+
+        private void picBoxBrown_Click(object sender, EventArgs e)
+        {
+            // Auto-stamp if switching from load mode
+            AutoStampOnToolSwitch();
+
+            brushPen.Color = picBoxBrown.BackColor;
+            brush.Color = picBoxBrown.BackColor;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxBrushColor.Image = null;
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+            flagErase = false;
+        }
+
         private void picBoxCustom_Click(object sender, EventArgs e)
         {
             // Auto-stamp if switching from load mode
@@ -599,7 +688,9 @@ namespace Doodle_241439P
             flagErase = true;
             flagText = false;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagLine = false;
             flagSquare = false;
             flagCircle = false;
@@ -621,7 +712,9 @@ namespace Doodle_241439P
             flagText = true;
             flagErase = false;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagLine = false;
             flagSquare = false;
             flagCircle = false;
@@ -761,6 +854,9 @@ namespace Doodle_241439P
 
         private void picBoxLoad_Click(object sender, EventArgs e)
         {
+            // Auto-stamp if switching from emoji mode
+            AutoStampOnToolSwitch();
+
             // Open file dialog to select image
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
@@ -803,6 +899,7 @@ namespace Doodle_241439P
                         }
 
                         flagLoad = true;
+                        flagEmoji = false;
                         flagBrush = false;
                         flagErase = false;
                         flagText = false;
@@ -829,23 +926,120 @@ namespace Doodle_241439P
 
         private void picBoxBrush_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
+            // Auto-stamp if switching from load/emoji mode
             AutoStampOnToolSwitch();
 
             flagBrush = true;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagErase = false;
             flagText = false;
             flagLine = false;
             flagSquare = false;
             flagCircle = false;
             flagNgon = false;
-            picBoxBrushColor.Image = null;
-            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxBrushColor.Image = Properties.Resources.paint_brush;
+            picBoxBrushColor.BackColor = Color.Transparent;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             SetToolBorder(picBoxBrush);
             UpdateUnifiedSlider();
             UpdateUnifiedComboBox();
+        }
+
+        // Fill tool click handler
+        private void picBoxFill_Click(object sender, EventArgs e)
+        {
+            // Auto-stamp if switching from load/emoji mode
+            AutoStampOnToolSwitch();
+
+            flagFill = true;
+            flagBrush = false;
+            flagLoad = false;
+            flagEmoji = false;
+            flagErase = false;
+            flagText = false;
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
+            picBoxBrushColor.Image = Properties.Resources.bucket;
+            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxMain.Cursor = Cursors.Hand; // Hand cursor for fill tool
+            SetToolBorder(picBoxFill);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
+        }
+
+        // Flood fill algorithm
+        private void PerformFloodFill(Point startPoint)
+        {
+            if (bm == null) return;
+
+            // Ensure point is within bounds
+            if (startPoint.X < 0 || startPoint.X >= bm.Width || 
+                startPoint.Y < 0 || startPoint.Y >= bm.Height)
+                return;
+
+            Color targetColor = bm.GetPixel(startPoint.X, startPoint.Y);
+            Color fillColor = brushPen.Color;
+
+            // If clicking on the same color, don't do anything
+            if (targetColor.ToArgb() == fillColor.ToArgb())
+                return;
+
+            // Use a queue-based flood fill algorithm
+            Queue<Point> queue = new Queue<Point>();
+            HashSet<Point> visited = new HashSet<Point>();
+            
+            queue.Enqueue(startPoint);
+            visited.Add(startPoint);
+
+            while (queue.Count > 0)
+            {
+                Point current = queue.Dequeue();
+                
+                // Check if this pixel matches the target color
+                if (current.X < 0 || current.X >= bm.Width || 
+                    current.Y < 0 || current.Y >= bm.Height)
+                    continue;
+
+                Color pixelColor = bm.GetPixel(current.X, current.Y);
+                
+                // Use tolerance for color matching (helps with anti-aliasing)
+                if (ColorsMatch(pixelColor, targetColor))
+                {
+                    bm.SetPixel(current.X, current.Y, fillColor);
+
+                    // Add neighbors to queue
+                    Point[] neighbors = new Point[]
+                    {
+                        new Point(current.X + 1, current.Y),
+                        new Point(current.X - 1, current.Y),
+                        new Point(current.X, current.Y + 1),
+                        new Point(current.X, current.Y - 1)
+                    };
+
+                    foreach (Point neighbor in neighbors)
+                    {
+                        if (!visited.Contains(neighbor) && 
+                            neighbor.X >= 0 && neighbor.X < bm.Width &&
+                            neighbor.Y >= 0 && neighbor.Y < bm.Height)
+                        {
+                            visited.Add(neighbor);
+                            queue.Enqueue(neighbor);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Helper method to check if two colors match (with tolerance)
+        private bool ColorsMatch(Color c1, Color c2, int tolerance = 5)
+        {
+            return Math.Abs(c1.R - c2.R) <= tolerance &&
+                   Math.Abs(c1.G - c2.G) <= tolerance &&
+                   Math.Abs(c1.B - c2.B) <= tolerance;
         }
 
         private void txtBoxText_TextChanged(object sender, EventArgs e)
@@ -885,7 +1079,7 @@ namespace Doodle_241439P
         private void DrawWithBrushType(Graphics g, Point start, Point end)
         {
             g.SmoothingMode = SmoothingMode.HighQuality;
-            
+
             switch (currentBrushType)
             {
                 case BrushType.Paintbrush:
@@ -911,9 +1105,9 @@ namespace Doodle_241439P
                         int offsetX = random.Next(-brushSize / 4, brushSize / 4);
                         int offsetY = random.Next(-brushSize / 4, brushSize / 4);
                         int size = brushSize - random.Next(0, brushSize / 3);
-                        g.FillEllipse(new SolidBrush(brushPen.Color), 
-                            end.X - size / 2 + offsetX, 
-                            end.Y - size / 2 + offsetY, 
+                        g.FillEllipse(new SolidBrush(brushPen.Color),
+                            end.X - size / 2 + offsetX,
+                            end.Y - size / 2 + offsetY,
                             size, size);
                     }
                     g.DrawLine(brushPen, start, end);
@@ -954,9 +1148,9 @@ namespace Doodle_241439P
                         {
                             using (SolidBrush airbrushBrush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
                             {
-                                g.FillEllipse(airbrushBrush, 
-                                    end.X - i / 2, 
-                                    end.Y - i / 2, 
+                                g.FillEllipse(airbrushBrush,
+                                    end.X - i / 2,
+                                    end.Y - i / 2,
                                     i, i);
                             }
                         }
@@ -1002,7 +1196,7 @@ namespace Doodle_241439P
                 double t = (double)i / steps;
                 int x = (int)(start.X + (end.X - start.X) * t);
                 int y = (int)(start.Y + (end.Y - start.Y) * t);
-                
+
                 // Draw with decreasing opacity from center
                 for (int j = size; j > 0; j -= 2)
                 {
@@ -1099,15 +1293,15 @@ namespace Doodle_241439P
             int y = Math.Min(start.Y, end.Y);
             int width = Math.Abs(end.X - start.X);
             int height = Math.Abs(end.Y - start.Y);
-            
+
             // Calculate center
             int centerX = x + width / 2;
             int centerY = y + height / 2;
-            
+
             // Calculate radius X and Y (for ellipse-like polygon)
             int radiusX = width / 2;
             int radiusY = height / 2;
-            
+
             // If Ctrl is pressed, make it regular (equal sides) using smaller dimension
             if (makeRegular)
             {
@@ -1115,7 +1309,7 @@ namespace Doodle_241439P
                 radiusX = size / 2;
                 radiusY = size / 2;
             }
-            
+
             // Ensure minimum size
             if (radiusX < 1) radiusX = 1;
             if (radiusY < 1) radiusY = 1;
@@ -1139,7 +1333,7 @@ namespace Doodle_241439P
         private void picBoxMain_Paint(object sender, PaintEventArgs e)
         {
             // Draw all placed images as temporary overlay (not yet stamped to bitmap)
-            if (flagLoad && placedImages.Count > 0)
+            if ((flagLoad || flagEmoji) && placedImages.Count > 0)
             {
                 e.Graphics.CompositingMode = CompositingMode.SourceOver;
                 e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
@@ -1165,8 +1359,8 @@ namespace Doodle_241439P
                 }
             }
 
-            // Draw border around selected image in load mode
-            if (flagLoad && selectedImage != null && !isDraggingImage)
+            // Draw border around selected image in load/emoji mode
+            if ((flagLoad || flagEmoji) && selectedImage != null && !isDraggingImage)
             {
                 Rectangle bounds = GetScaledBounds(selectedImage);
                 using (Pen borderPen = new Pen(Color.Blue, 2))
@@ -1366,6 +1560,7 @@ namespace Doodle_241439P
 
             // Switch back to brush mode after stamping
             flagLoad = false;
+            flagEmoji = false;
             flagBrush = true;
             flagErase = false;
             flagText = false;
@@ -1393,6 +1588,132 @@ namespace Doodle_241439P
             if (flagLoad && selectedImage != null)
             {
                 StampImage(selectedImage);
+            }
+            // Note: Don't auto-stamp emojis when switching - let user place multiple
+        }
+
+        // Create a bitmap from emoji text (supports multiple emojis)
+        private Bitmap CreateEmojiBitmap(string emoji, int size)
+        {
+            // Measure the text first to determine bitmap size
+            Font emojiFont = new Font("Segoe UI Emoji", size * 0.7f, FontStyle.Regular, GraphicsUnit.Pixel);
+            SizeF textSize;
+            using (Graphics measureG = this.CreateGraphics())
+            {
+                textSize = measureG.MeasureString(emoji, emojiFont);
+            }
+            
+            // Create a bitmap that fits the text (with padding)
+            int bitmapWidth = Math.Max(size, (int)textSize.Width + 20);
+            int bitmapHeight = Math.Max(size, (int)textSize.Height + 20);
+            Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight);
+            
+            // Draw emoji in black (Windows Forms limitation - colored emojis not supported)
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Transparent);
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                g.SmoothingMode = SmoothingMode.HighQuality;
+
+                // Center the text in the bitmap
+                float x = (bitmapWidth - textSize.Width) / 2;
+                float y = (bitmapHeight - textSize.Height) / 2;
+
+                // Draw in black (supports multiple emojis)
+                g.DrawString(emoji, emojiFont, Brushes.Black, x, y);
+                
+                emojiFont.Dispose();
+            }
+            
+            return bmp;
+        }
+
+        // Emoji tool click handler
+        private void picBoxEmoji_Click(object sender, EventArgs e)
+        {
+            // Auto-stamp if switching from load mode (but not if already in emoji mode)
+            // If already in emoji mode, don't stamp - just show dialog to change emoji
+            if (flagLoad && !flagEmoji)
+            {
+                AutoStampOnToolSwitch();
+            }
+            // If already in emoji mode with a selected emoji, don't auto-stamp it
+            // User can continue placing more emojis or change the emoji text
+
+            // Prompt user to enter emoji
+            using (Form emojiInputForm = new Form())
+            {
+                emojiInputForm.Text = "Enter Emoji";
+                emojiInputForm.Size = new Size(400, 220);
+                emojiInputForm.StartPosition = FormStartPosition.CenterParent;
+                emojiInputForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                emojiInputForm.MaximizeBox = false;
+                emojiInputForm.MinimizeBox = false;
+                emojiInputForm.ShowInTaskbar = false;
+                emojiInputForm.TopMost = true; // Show above TopMost main form
+                emojiInputForm.Owner = this; // Set owner to ensure proper z-order
+
+                TextBox inputBox = new TextBox();
+                inputBox.Location = new Point(30, 30);
+                inputBox.Size = new Size(340, 80);
+                inputBox.Multiline = true;
+                inputBox.Text = emojiText;
+                inputBox.Font = new Font("Segoe UI Emoji", 20);
+                inputBox.SelectAll();
+
+
+                Button okButton = new Button();
+                okButton.Text = "OK";
+                okButton.DialogResult = DialogResult.OK;
+                okButton.Location = new Point(120, 130);
+                okButton.Size = new Size(100, 35);
+
+                Button cancelButton = new Button();
+                cancelButton.Text = "Cancel";
+                cancelButton.DialogResult = DialogResult.Cancel;
+                cancelButton.Location = new Point(230, 130);
+                cancelButton.Size = new Size(100, 35);
+
+                emojiInputForm.Controls.Add(inputBox);
+                emojiInputForm.Controls.Add(okButton);
+                emojiInputForm.Controls.Add(cancelButton);
+                emojiInputForm.AcceptButton = okButton;
+                emojiInputForm.CancelButton = cancelButton;
+
+                if (emojiInputForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    string input = inputBox.Text.Trim();
+                    if (!string.IsNullOrEmpty(input))
+                    {
+                        emojiText = input;
+                        // Enable emoji mode
+                        flagEmoji = true;
+                        flagLoad = false;
+                        flagBrush = false;
+                        flagErase = false;
+                        flagText = false;
+                        flagLine = false;
+                        flagSquare = false;
+                        flagCircle = false;
+                        flagNgon = false;
+                        picBoxBrushColor.Image = Properties.Resources.happy_face;
+                        picBoxBrushColor.BackColor = Color.Transparent;
+                        picBoxMain.Cursor = Cursors.Default;
+                        SetToolBorder(picBoxEmoji);
+                        UpdateUnifiedSlider();
+                        UpdateUnifiedComboBox();
+                    }
+                    else
+                    {
+                        // User cancelled or entered empty, don't enable emoji mode
+                        return;
+                    }
+                }
+                else
+                {
+                    // User cancelled, don't enable emoji mode
+                    return;
+                }
             }
         }
 
@@ -1425,9 +1746,11 @@ namespace Doodle_241439P
         {
             // Clear borders on all tool buttons
             picBoxBrush.BorderStyle = BorderStyle.None;
+            picBoxFill.BorderStyle = BorderStyle.None;
             picBoxLoad.BorderStyle = BorderStyle.None;
             picBoxErase.BorderStyle = BorderStyle.None;
             picBoxText.BorderStyle = BorderStyle.None;
+            picBoxEmoji.BorderStyle = BorderStyle.None;
             picBoxLine.BorderStyle = BorderStyle.None;
             picBoxSquare.BorderStyle = BorderStyle.None;
             picBoxCircle.BorderStyle = BorderStyle.None;
@@ -1562,9 +1885,9 @@ namespace Doodle_241439P
                 trackBarUnified.Value = selectedFontSize;
                 lblUnified.Text = $"Font Size: {selectedFontSize}pts";
             }
-            else if (flagLoad && selectedImage != null)
+            else if ((flagLoad || flagEmoji) && selectedImage != null)
             {
-                // Image load tool with selected image - use image scale
+                // Image load/emoji tool with selected image - use image scale
                 trackBarUnified.Minimum = 50;
                 trackBarUnified.Maximum = 200;
                 trackBarUnified.TickFrequency = 25;
@@ -1603,7 +1926,7 @@ namespace Doodle_241439P
                 brushSize = value;
                 brushPen.Width = brushSize;
                 lblUnified.Text = $"Brush: {brushSize}pts";
-                
+
                 // Update shape preview if drawing
                 if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
                 {
@@ -1641,9 +1964,9 @@ namespace Doodle_241439P
                     picBoxMain.Invalidate(); // Update preview
                 }
             }
-            else if (flagLoad && selectedImage != null)
+            else if ((flagLoad || flagEmoji) && selectedImage != null)
             {
-                // Image load tool - update image scale
+                // Image load/emoji tool - update image scale
                 imageScale = value / 100.0f;
                 lblUnified.Text = $"Scale: {value}%";
                 if (selectedImage != null)
@@ -1664,7 +1987,9 @@ namespace Doodle_241439P
             flagCircle = false;
             flagNgon = false;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagErase = false;
             flagText = false;
             picBoxBrushColor.Image = null;
@@ -1683,7 +2008,9 @@ namespace Doodle_241439P
             flagCircle = false;
             flagNgon = false;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagErase = false;
             flagText = false;
             picBoxBrushColor.Image = null;
@@ -1702,7 +2029,9 @@ namespace Doodle_241439P
             flagCircle = true;
             flagNgon = false;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagErase = false;
             flagText = false;
             picBoxBrushColor.Image = null;
@@ -1721,7 +2050,9 @@ namespace Doodle_241439P
             flagCircle = false;
             flagNgon = true;
             flagBrush = false;
+            flagFill = false;
             flagLoad = false;
+            flagEmoji = false;
             flagErase = false;
             flagText = false;
             picBoxBrushColor.Image = null;
@@ -1824,6 +2155,11 @@ namespace Doodle_241439P
         }
 
         private void lblFont_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblUnifiedCombo_Click(object sender, EventArgs e)
         {
 
         }

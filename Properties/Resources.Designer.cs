@@ -63,6 +63,16 @@ namespace Doodle_241439P.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap bucket {
+            get {
+                object obj = ResourceManager.GetObject("bucket", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap diagonal_line {
             get {
                 object obj = ResourceManager.GetObject("diagonal-line", resourceCulture);
@@ -93,16 +103,6 @@ namespace Doodle_241439P.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap dry_clean1 {
-            get {
-                object obj = ResourceManager.GetObject("dry-clean1", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap eraser {
             get {
                 object obj = ResourceManager.GetObject("eraser", resourceCulture);
@@ -116,6 +116,16 @@ namespace Doodle_241439P.Properties {
         internal static System.Drawing.Bitmap eyedropper {
             get {
                 object obj = ResourceManager.GetObject("eyedropper", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap happy_face {
+            get {
+                object obj = ResourceManager.GetObject("happy-face", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -156,16 +166,6 @@ namespace Doodle_241439P.Properties {
         internal static System.Drawing.Bitmap pentagon {
             get {
                 object obj = ResourceManager.GetObject("pentagon", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap square {
-            get {
-                object obj = ResourceManager.GetObject("square", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

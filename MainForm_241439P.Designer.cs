@@ -51,7 +51,10 @@ namespace Doodle_241439P
             picBoxYellow = new PictureBox();
             picBoxWhite = new PictureBox();
             picBoxCustom = new PictureBox();
+            picBoxPurple = new PictureBox();
+            picBoxBrown = new PictureBox();
             panelShapes = new Panel();
+            txtBoxText = new TextBox();
             picBoxLine = new PictureBox();
             picBoxSquare = new PictureBox();
             picBoxCircle = new PictureBox();
@@ -59,13 +62,14 @@ namespace Doodle_241439P
             lblNgonSides = new Label();
             checkBoxShapeFilled = new CheckBox();
             trackBarNgonSides = new TrackBar();
-            txtBoxText = new TextBox();
             picBoxSave = new PictureBox();
             picBoxClear = new PictureBox();
             picBoxErase = new PictureBox();
             picBoxText = new PictureBox();
             picBoxLoad = new PictureBox();
             picBoxBrush = new PictureBox();
+            picBoxEmoji = new PictureBox();
+            picBoxFill = new PictureBox();
             btnStampImage = new Button();
             trackBarUnified = new TrackBar();
             lblUnified = new Label();
@@ -85,6 +89,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxYellow).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxWhite).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxCustom).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxPurple).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxBrown).BeginInit();
             panelShapes.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxLine).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxSquare).BeginInit();
@@ -97,6 +103,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxEmoji).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxFill).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarUnified).BeginInit();
             SuspendLayout();
             // 
@@ -107,7 +115,7 @@ namespace Doodle_241439P
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(835, 30);
+            menuStrip1.Size = new Size(885, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -135,9 +143,9 @@ namespace Doodle_241439P
             // picBoxMain
             // 
             picBoxMain.BackColor = Color.LightGray;
-            picBoxMain.Location = new Point(12, 158);
+            picBoxMain.Location = new Point(11, 151);
             picBoxMain.Name = "picBoxMain";
-            picBoxMain.Size = new Size(813, 410);
+            picBoxMain.Size = new Size(870, 410);
             picBoxMain.TabIndex = 1;
             picBoxMain.TabStop = false;
             picBoxMain.Paint += picBoxMain_Paint;
@@ -158,6 +166,8 @@ namespace Doodle_241439P
             panelColor.Controls.Add(picBoxYellow);
             panelColor.Controls.Add(picBoxWhite);
             panelColor.Controls.Add(picBoxCustom);
+            panelColor.Controls.Add(picBoxPurple);
+            panelColor.Controls.Add(picBoxBrown);
             panelColor.Location = new Point(12, 33);
             panelColor.Name = "panelColor";
             panelColor.Size = new Size(253, 112);
@@ -277,8 +287,29 @@ namespace Doodle_241439P
             picBoxCustom.TabStop = false;
             picBoxCustom.Click += picBoxCustom_Click;
             // 
+            // picBoxPurple
+            // 
+            picBoxPurple.BackColor = Color.Purple;
+            picBoxPurple.Location = new Point(218, 3);
+            picBoxPurple.Name = "picBoxPurple";
+            picBoxPurple.Size = new Size(30, 30);
+            picBoxPurple.TabIndex = 14;
+            picBoxPurple.TabStop = false;
+            picBoxPurple.Click += picBoxPurple_Click;
+            // 
+            // picBoxBrown
+            // 
+            picBoxBrown.BackColor = Color.Brown;
+            picBoxBrown.Location = new Point(218, 39);
+            picBoxBrown.Name = "picBoxBrown";
+            picBoxBrown.Size = new Size(30, 30);
+            picBoxBrown.TabIndex = 15;
+            picBoxBrown.TabStop = false;
+            picBoxBrown.Click += picBoxBrown_Click;
+            // 
             // panelShapes
             // 
+            panelShapes.Controls.Add(txtBoxText);
             panelShapes.Controls.Add(picBoxLine);
             panelShapes.Controls.Add(picBoxSquare);
             panelShapes.Controls.Add(picBoxCircle);
@@ -290,6 +321,14 @@ namespace Doodle_241439P
             panelShapes.Name = "panelShapes";
             panelShapes.Size = new Size(215, 112);
             panelShapes.TabIndex = 36;
+            // 
+            // txtBoxText
+            // 
+            txtBoxText.Location = new Point(3, 82);
+            txtBoxText.Name = "txtBoxText";
+            txtBoxText.Size = new Size(209, 27);
+            txtBoxText.TabIndex = 12;
+            txtBoxText.TextChanged += txtBoxText_TextChanged;
             // 
             // picBoxLine
             // 
@@ -373,14 +412,6 @@ namespace Doodle_241439P
             trackBarNgonSides.Value = 5;
             trackBarNgonSides.ValueChanged += trackBarNgonSides_ValueChanged;
             // 
-            // txtBoxText
-            // 
-            txtBoxText.Location = new Point(271, 39);
-            txtBoxText.Name = "txtBoxText";
-            txtBoxText.Size = new Size(200, 27);
-            txtBoxText.TabIndex = 12;
-            txtBoxText.TextChanged += txtBoxText_TextChanged;
-            // 
             // picBoxSave
             // 
             picBoxSave.BackColor = Color.Transparent;
@@ -453,9 +484,33 @@ namespace Doodle_241439P
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
             // 
+            // picBoxEmoji
+            // 
+            picBoxEmoji.BackColor = Color.Transparent;
+            picBoxEmoji.Image = Properties.Resources.happy_face;
+            picBoxEmoji.Location = new Point(663, 33);
+            picBoxEmoji.Name = "picBoxEmoji";
+            picBoxEmoji.Size = new Size(50, 50);
+            picBoxEmoji.SizeMode = PictureBoxSizeMode.StretchImage;
+            picBoxEmoji.TabIndex = 19;
+            picBoxEmoji.TabStop = false;
+            picBoxEmoji.Click += picBoxEmoji_Click;
+            // 
+            // picBoxFill
+            // 
+            picBoxFill.BackColor = Color.Transparent;
+            picBoxFill.Image = Properties.Resources.bucket;
+            picBoxFill.Location = new Point(663, 95);
+            picBoxFill.Name = "picBoxFill";
+            picBoxFill.Size = new Size(50, 50);
+            picBoxFill.SizeMode = PictureBoxSizeMode.StretchImage;
+            picBoxFill.TabIndex = 20;
+            picBoxFill.TabStop = false;
+            picBoxFill.Click += picBoxFill_Click;
+            // 
             // btnStampImage
             // 
-            btnStampImage.Location = new Point(663, 95);
+            btnStampImage.Location = new Point(719, 105);
             btnStampImage.Name = "btnStampImage";
             btnStampImage.Size = new Size(82, 35);
             btnStampImage.TabIndex = 0;
@@ -466,7 +521,7 @@ namespace Doodle_241439P
             // 
             // trackBarUnified
             // 
-            trackBarUnified.Location = new Point(663, 56);
+            trackBarUnified.Location = new Point(719, 55);
             trackBarUnified.Maximum = 70;
             trackBarUnified.Minimum = 10;
             trackBarUnified.Name = "trackBarUnified";
@@ -479,7 +534,7 @@ namespace Doodle_241439P
             // lblUnified
             // 
             lblUnified.AutoSize = true;
-            lblUnified.Location = new Point(663, 33);
+            lblUnified.Location = new Point(719, 30);
             lblUnified.Name = "lblUnified";
             lblUnified.Size = new Size(88, 20);
             lblUnified.TabIndex = 39;
@@ -490,7 +545,7 @@ namespace Doodle_241439P
             comboBoxUnified.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxUnified.FormattingEnabled = true;
             comboBoxUnified.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
-            comboBoxUnified.Location = new Point(662, 117);
+            comboBoxUnified.Location = new Point(719, 105);
             comboBoxUnified.Name = "comboBoxUnified";
             comboBoxUnified.Size = new Size(162, 28);
             comboBoxUnified.TabIndex = 41;
@@ -499,17 +554,18 @@ namespace Doodle_241439P
             // lblUnifiedCombo
             // 
             lblUnifiedCombo.AutoSize = true;
-            lblUnifiedCombo.Location = new Point(662, 95);
+            lblUnifiedCombo.Location = new Point(719, 82);
             lblUnifiedCombo.Name = "lblUnifiedCombo";
             lblUnifiedCombo.Size = new Size(83, 20);
             lblUnifiedCombo.TabIndex = 40;
             lblUnifiedCombo.Text = "Brush Type:";
+            lblUnifiedCombo.Click += lblUnifiedCombo_Click;
             // 
             // MainForm_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(835, 587);
+            ClientSize = new Size(885, 577);
             Controls.Add(panelShapes);
             Controls.Add(btnStampImage);
             Controls.Add(comboBoxUnified);
@@ -517,12 +573,13 @@ namespace Doodle_241439P
             Controls.Add(lblUnified);
             Controls.Add(trackBarUnified);
             Controls.Add(picBoxBrush);
+            Controls.Add(picBoxFill);
             Controls.Add(picBoxLoad);
             Controls.Add(picBoxText);
+            Controls.Add(picBoxEmoji);
             Controls.Add(picBoxErase);
             Controls.Add(picBoxClear);
             Controls.Add(picBoxSave);
-            Controls.Add(txtBoxText);
             Controls.Add(panelColor);
             Controls.Add(picBoxMain);
             Controls.Add(menuStrip1);
@@ -548,6 +605,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxYellow).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxWhite).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxCustom).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxPurple).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxBrown).EndInit();
             panelShapes.ResumeLayout(false);
             panelShapes.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxLine).EndInit();
@@ -561,6 +620,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxEmoji).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxFill).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarUnified).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -586,6 +647,8 @@ namespace Doodle_241439P
         private System.Windows.Forms.PictureBox picBoxOrange;
         private System.Windows.Forms.PictureBox picBoxWhite;
         private System.Windows.Forms.PictureBox picBoxCustom;
+        private System.Windows.Forms.PictureBox picBoxPurple;
+        private System.Windows.Forms.PictureBox picBoxBrown;
         private System.Windows.Forms.TextBox txtBoxText;
         private System.Windows.Forms.PictureBox picBoxSave;
         private System.Windows.Forms.PictureBox picBoxClear;
@@ -593,6 +656,8 @@ namespace Doodle_241439P
         private System.Windows.Forms.PictureBox picBoxText;
         private System.Windows.Forms.PictureBox picBoxLoad;
         private System.Windows.Forms.PictureBox picBoxBrush;
+        private System.Windows.Forms.PictureBox picBoxFill;
+        private System.Windows.Forms.PictureBox picBoxEmoji;
         private System.Windows.Forms.TrackBar trackBarUnified;
         private System.Windows.Forms.Label lblUnified;
         private System.Windows.Forms.ComboBox comboBoxUnified;

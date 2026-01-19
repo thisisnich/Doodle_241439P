@@ -122,19 +122,19 @@
     <value>..\Resources\diskette.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="pentagon" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\pentagon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>..\Resources\pentagon1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="image" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\image.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="happy-face" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\happy-face1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="text" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\text.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="diagonal-line" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\diagonal-line.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="eraser" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\eraser.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>..\Resources\diagonal-line1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="paint-brush" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\paint-brush.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -142,22 +142,22 @@
   <data name="pen" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\pen.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="square" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\square.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="eraser" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\eraser.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="dry-clean" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\dry-clean.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>..\Resources\dry-clean2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="eyedropper" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\eyedropper.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="square(1)" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\square(1).png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>..\Resources\square(1)1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="trash" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\trash.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="dry-clean1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\dry-clean1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="bucket" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\bucket.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

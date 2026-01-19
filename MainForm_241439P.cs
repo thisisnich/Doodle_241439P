@@ -6,6 +6,17 @@ using System.Drawing.Imaging;
 
 namespace Doodle_241439P
 {
+    // Brush type enumeration
+    public enum BrushType
+    {
+        Paintbrush,
+        Crayon,
+        Marker,
+        Pencil,
+        Airbrush,
+        PureBlack
+    }
+
     public partial class MainForm_241439P : Form
     {
         Bitmap bm;
@@ -20,6 +31,10 @@ namespace Doodle_241439P
         bool flagText = false;
         bool flagBrush = false;
         bool flagLoad = false;  // Load/picture select mode
+        bool flagLine = false;
+        bool flagSquare = false;
+        bool flagCircle = false;
+        bool flagNgon = false;
         Bitmap? loadedImage = null;  // Currently loaded image to place
         List<PlacedImage> placedImages = new List<PlacedImage>();  // All placed images on canvas
         PlacedImage? selectedImage = null;  // Currently selected image for dragging/resizing
@@ -28,6 +43,8 @@ namespace Doodle_241439P
         string strText = "Doodle Painting";
         int brushSize = 30;   // mandatory options: 10,30,50,70
         int eraserSize = 30;  // mandatory options: 10,30,50,70
+        BrushType currentBrushType = BrushType.Paintbrush;  // Current brush type
+        Random random = new Random();  // For crayon texture effect
         string selectedFontName = "Arial";
         int selectedFontSize = 30;
         Point textPosition = new Point(0, 0);
@@ -37,7 +54,14 @@ namespace Doodle_241439P
         float imageScale = 1.0f;  // Scale factor for selected image (1.0 = 100%)
         Cursor? brushCursor = null;
         Cursor? eraserCursor = null;
-        
+
+        // Shape tool variables
+        int ngonSides = 5;  // Default pentagon
+        bool shapeFilled = false;  // Filled vs outlined mode
+        bool isDrawingShape = false;  // Flag for shape drawing in progress
+        Point shapeStartPoint = Point.Empty;  // Start point for shape drawing
+        Point shapeEndPoint = Point.Empty;  // End point for shape drawing
+
         // Undo functionality
         private Stack<Bitmap> undoStack = new Stack<Bitmap>();
         private const int MAX_UNDO_LEVELS = 20;
@@ -114,13 +138,13 @@ namespace Doodle_241439P
         private void MainForm_241439P_Load(object sender, EventArgs e)
         {
             bm = new Bitmap(picBoxMain.Width, picBoxMain.Height);
-            
+
             // Fill with initial background color
             using (Graphics g = Graphics.FromImage(bm))
             {
                 g.Clear(Color.LightGray);
             }
-            
+
             picBoxMain.Image = bm;
 
             // Initialize font and size
@@ -137,11 +161,28 @@ namespace Doodle_241439P
             // Initialize text box with default text
             txtBoxText.Text = "Doodle Painting";
 
+            // Initialize N-gon trackbar
+            trackBarNgonSides.Value = 5;
+            ngonSides = 5;
+            lblNgonSides.Text = "Sides: 5";
+            checkBoxShapeFilled.Checked = false;
+            shapeFilled = false;
+
+            // Initialize brush type ComboBox
+            comboBoxBrushType.SelectedIndex = 0; // Default to Paintbrush
+            currentBrushType = BrushType.Paintbrush;
+
+            // Create icons for shape buttons (so they're visible in designer)
+            CreateShapeButtonIcons();
+
             // Create custom cursors from icons
             // Hot spot at bottom center (tip of brush/eraser) for better precision
             brushCursor = CreateCursorFromBitmap(Properties.Resources.paint_brush, new Point(16, 28));
             eraserCursor = CreateCursorFromBitmap(Properties.Resources.eraser, new Point(16, 28));
 
+            // Clear all borders initially
+            ClearAllToolBorders();
+            
             // Set initial tool to brush mode
             flagBrush = true;
             if (brushCursor != null)
@@ -250,6 +291,16 @@ namespace Doodle_241439P
                     endP = e.Location; // Initialize endP for continuous drawing
                 }
             }
+            else if (flagLine || flagSquare || flagCircle || flagNgon)
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    SaveUndoState();  // Save state before drawing shape
+                    isDrawingShape = true;
+                    shapeStartPoint = e.Location;
+                    shapeEndPoint = e.Location;
+                }
+            }
             else if (flagLoad)
             {
                 if (e.Button == MouseButtons.Left)
@@ -322,15 +373,8 @@ namespace Doodle_241439P
                 {
                     if (flagBrush == true)
                     {
-                        // Brush: Soft, painterly effect using rounded caps and ellipses
-                        brushPen.Width = brushSize;
-                        brushPen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
-                        brushPen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
-                        brushPen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
-                        // Draw with ellipses for a more brush-like, painterly effect
-                        int radius = brushSize / 2;
-                        g.FillEllipse(new SolidBrush(brushPen.Color), endP.X - radius, endP.Y - radius, brushSize, brushSize);
-                        g.DrawLine(brushPen, startP, endP);
+                        // Draw using the selected brush type
+                        DrawWithBrushType(g, startP, endP);
                     }
                 }
                 else
@@ -356,6 +400,12 @@ namespace Doodle_241439P
                 previewMousePos = e.Location;
                 picBoxMain.Invalidate();
             }
+            else if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
+            {
+                // Update shape preview while dragging
+                shapeEndPoint = e.Location;
+                picBoxMain.Invalidate(); // Trigger Paint event to show preview
+            }
             else if (flagLoad)
             {
                 // Update cursor when hovering over images/resize handles
@@ -366,6 +416,16 @@ namespace Doodle_241439P
 
         private void picBoxMain_MouseUp(object sender, MouseEventArgs e)
         {
+            if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
+            {
+                // Finalize shape by drawing to bitmap
+                shapeEndPoint = e.Location;
+                DrawShapeToCanvas();
+                isDrawingShape = false;
+                shapeStartPoint = Point.Empty;
+                shapeEndPoint = Point.Empty;
+                picBoxMain.Invalidate();
+            }
             flagDraw = false;
             isDraggingText = false;
             isDraggingImage = false;
@@ -536,6 +596,10 @@ namespace Doodle_241439P
             flagText = false;
             flagBrush = false;
             flagLoad = false;
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
             picBoxMain.Cursor = eraserCursor ?? Cursors.Cross;
             SetToolBorder(picBoxErase);
         }
@@ -552,6 +616,10 @@ namespace Doodle_241439P
             flagErase = false;
             flagBrush = false;
             flagLoad = false;
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
             if (string.IsNullOrEmpty(txtBoxText.Text))
                 txtBoxText.Text = "Doodle Painting";
             strText = txtBoxText.Text;
@@ -730,6 +798,10 @@ namespace Doodle_241439P
                         flagBrush = false;
                         flagErase = false;
                         flagText = false;
+                        flagLine = false;
+                        flagSquare = false;
+                        flagCircle = false;
+                        flagNgon = false;
                         picBoxBrushColor.Image = Properties.Resources.image;
                         picBoxBrushColor.BackColor = Color.Transparent;
                         SetToolBorder(picBoxLoad);
@@ -754,6 +826,10 @@ namespace Doodle_241439P
             flagLoad = false;
             flagErase = false;
             flagText = false;
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
@@ -791,6 +867,261 @@ namespace Doodle_241439P
             textBrush.Dispose();
             font.Dispose();
             g.Dispose();
+        }
+
+        // Draw with selected brush type
+        private void DrawWithBrushType(Graphics g, Point start, Point end)
+        {
+            g.SmoothingMode = SmoothingMode.HighQuality;
+            
+            switch (currentBrushType)
+            {
+                case BrushType.Paintbrush:
+                    // Soft, painterly effect using rounded caps and ellipses
+                    brushPen.Width = brushSize;
+                    brushPen.StartCap = LineCap.Round;
+                    brushPen.EndCap = LineCap.Round;
+                    brushPen.LineJoin = LineJoin.Round;
+                    int radius = brushSize / 2;
+                    g.FillEllipse(new SolidBrush(brushPen.Color), end.X - radius, end.Y - radius, brushSize, brushSize);
+                    g.DrawLine(brushPen, start, end);
+                    break;
+
+                case BrushType.Crayon:
+                    // Rough, grainy texture with irregular edges
+                    brushPen.Width = brushSize;
+                    brushPen.StartCap = LineCap.Round;
+                    brushPen.EndCap = LineCap.Round;
+                    brushPen.LineJoin = LineJoin.Round;
+                    // Add some texture by drawing multiple overlapping circles with slight variations
+                    for (int i = 0; i < 3; i++)
+                    {
+                        int offsetX = random.Next(-brushSize / 4, brushSize / 4);
+                        int offsetY = random.Next(-brushSize / 4, brushSize / 4);
+                        int size = brushSize - random.Next(0, brushSize / 3);
+                        g.FillEllipse(new SolidBrush(brushPen.Color), 
+                            end.X - size / 2 + offsetX, 
+                            end.Y - size / 2 + offsetY, 
+                            size, size);
+                    }
+                    g.DrawLine(brushPen, start, end);
+                    break;
+
+                case BrushType.Marker:
+                    // Clean, solid lines with sharp edges
+                    brushPen.Width = brushSize;
+                    brushPen.StartCap = LineCap.Square;
+                    brushPen.EndCap = LineCap.Square;
+                    brushPen.LineJoin = LineJoin.Miter;
+                    g.CompositingMode = CompositingMode.SourceCopy; // Fully opaque
+                    g.DrawLine(brushPen, start, end);
+                    // Fill at end point
+                    radius = brushSize / 2;
+                    g.FillEllipse(new SolidBrush(brushPen.Color), end.X - radius, end.Y - radius, brushSize, brushSize);
+                    g.CompositingMode = CompositingMode.SourceOver;
+                    break;
+
+                case BrushType.Pencil:
+                    // Sharp, precise lines with hard edges
+                    brushPen.Width = Math.Max(1, brushSize / 3); // Thinner for pencil
+                    brushPen.StartCap = LineCap.Flat;
+                    brushPen.EndCap = LineCap.Flat;
+                    brushPen.LineJoin = LineJoin.Miter;
+                    g.SmoothingMode = SmoothingMode.None; // Sharp edges
+                    g.DrawLine(brushPen, start, end);
+                    g.SmoothingMode = SmoothingMode.HighQuality;
+                    break;
+
+                case BrushType.Airbrush:
+                    // Very soft, feathered edges with gradient opacity
+                    int airbrushSize = brushSize * 2; // Larger for airbrush effect
+                    for (int i = airbrushSize; i > 0; i -= 2)
+                    {
+                        int alpha = (int)(255 * (1.0 - (double)i / airbrushSize));
+                        if (alpha > 0)
+                        {
+                            using (SolidBrush airbrushBrush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
+                            {
+                                g.FillEllipse(airbrushBrush, 
+                                    end.X - i / 2, 
+                                    end.Y - i / 2, 
+                                    i, i);
+                            }
+                        }
+                    }
+                    // Draw connecting line with gradient
+                    DrawGradientLine(g, start, end, brushSize);
+                    break;
+
+                case BrushType.PureBlack:
+                    // Completely opaque, sharp edges
+                    brushPen.Width = brushSize;
+                    brushPen.StartCap = LineCap.Square;
+                    brushPen.EndCap = LineCap.Square;
+                    brushPen.LineJoin = LineJoin.Miter;
+                    Color pureColor = Color.FromArgb(255, 0, 0, 0); // Pure black
+                    if (brushPen.Color.R > 128 || brushPen.Color.G > 128 || brushPen.Color.B > 128)
+                    {
+                        // If not black, use the selected color but fully opaque
+                        pureColor = Color.FromArgb(255, brushPen.Color);
+                    }
+                    using (Pen purePen = new Pen(pureColor, brushSize))
+                    using (SolidBrush pureBrush = new SolidBrush(pureColor))
+                    {
+                        purePen.StartCap = LineCap.Square;
+                        purePen.EndCap = LineCap.Square;
+                        purePen.LineJoin = LineJoin.Miter;
+                        g.CompositingMode = CompositingMode.SourceCopy;
+                        g.DrawLine(purePen, start, end);
+                        radius = brushSize / 2;
+                        g.FillEllipse(pureBrush, end.X - radius, end.Y - radius, brushSize, brushSize);
+                        g.CompositingMode = CompositingMode.SourceOver;
+                    }
+                    break;
+            }
+        }
+
+        // Helper method for airbrush gradient line
+        private void DrawGradientLine(Graphics g, Point start, Point end, int size)
+        {
+            int steps = Math.Max(10, Math.Abs(end.X - start.X) + Math.Abs(end.Y - start.Y));
+            for (int i = 0; i < steps; i++)
+            {
+                double t = (double)i / steps;
+                int x = (int)(start.X + (end.X - start.X) * t);
+                int y = (int)(start.Y + (end.Y - start.Y) * t);
+                
+                // Draw with decreasing opacity from center
+                for (int j = size; j > 0; j -= 2)
+                {
+                    int alpha = (int)(180 * (1.0 - (double)j / size));
+                    if (alpha > 0)
+                    {
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
+                        {
+                            g.FillEllipse(brush, x - j / 2, y - j / 2, j, j);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Draw shape to canvas (finalize)
+        private void DrawShapeToCanvas()
+        {
+            if (bm == null) return;
+
+            g = Graphics.FromImage(bm);
+            g.SmoothingMode = SmoothingMode.HighQuality;
+            // Use brushPen.Width to ensure it matches the current brush size setting
+            Pen shapePen = new Pen(brushPen.Color, brushPen.Width);
+            SolidBrush shapeBrush = new SolidBrush(brushPen.Color);
+
+            bool shiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+
+            if (flagLine)
+            {
+                g.DrawLine(shapePen, shapeStartPoint, shapeEndPoint);
+            }
+            else if (flagSquare)
+            {
+                Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                if (shapeFilled)
+                {
+                    g.FillRectangle(shapeBrush, rect);
+                }
+                g.DrawRectangle(shapePen, rect);
+            }
+            else if (flagCircle)
+            {
+                Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                if (shapeFilled)
+                {
+                    g.FillEllipse(shapeBrush, rect);
+                }
+                g.DrawEllipse(shapePen, rect);
+            }
+            else if (flagNgon)
+            {
+                // Use Ctrl for regular (equal-sided) polygon, like Shift for square/circle
+                bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                Point[] points = CalculateNgonPoints(shapeStartPoint, shapeEndPoint, ctrlPressed);
+                if (points != null && points.Length > 0)
+                {
+                    if (shapeFilled)
+                    {
+                        g.FillPolygon(shapeBrush, points);
+                    }
+                    g.DrawPolygon(shapePen, points);
+                }
+            }
+
+            shapePen.Dispose();
+            shapeBrush.Dispose();
+            g.Dispose();
+        }
+
+        // Calculate rectangle from two points, optionally making it square if Shift is pressed
+        private Rectangle CalculateRectangle(Point start, Point end, bool makeSquare)
+        {
+            int x = Math.Min(start.X, end.X);
+            int y = Math.Min(start.Y, end.Y);
+            int width = Math.Abs(end.X - start.X);
+            int height = Math.Abs(end.Y - start.Y);
+
+            if (makeSquare)
+            {
+                int size = Math.Max(width, height);
+                width = size;
+                height = size;
+            }
+
+            return new Rectangle(x, y, width, height);
+        }
+
+        // Calculate N-gon points (polygon that fits bounding rectangle, or regular if Ctrl pressed)
+        private Point[] CalculateNgonPoints(Point start, Point end, bool makeRegular)
+        {
+            // Calculate bounding rectangle (same logic as square/circle)
+            int x = Math.Min(start.X, end.X);
+            int y = Math.Min(start.Y, end.Y);
+            int width = Math.Abs(end.X - start.X);
+            int height = Math.Abs(end.Y - start.Y);
+            
+            // Calculate center
+            int centerX = x + width / 2;
+            int centerY = y + height / 2;
+            
+            // Calculate radius X and Y (for ellipse-like polygon)
+            int radiusX = width / 2;
+            int radiusY = height / 2;
+            
+            // If Ctrl is pressed, make it regular (equal sides) using smaller dimension
+            if (makeRegular)
+            {
+                int size = Math.Min(width, height);
+                radiusX = size / 2;
+                radiusY = size / 2;
+            }
+            
+            // Ensure minimum size
+            if (radiusX < 1) radiusX = 1;
+            if (radiusY < 1) radiusY = 1;
+
+            Point[] points = new Point[ngonSides];
+            double angleStep = 2 * Math.PI / ngonSides;
+            double startAngle = -Math.PI / 2; // Start at top
+
+            for (int i = 0; i < ngonSides; i++)
+            {
+                double angle = startAngle + i * angleStep;
+                // Use radiusX and radiusY to create ellipse-like polygon (or circle if regular)
+                int px = centerX + (int)(radiusX * Math.Cos(angle));
+                int py = centerY + (int)(radiusY * Math.Sin(angle));
+                points[i] = new Point(px, py);
+            }
+
+            return points;
         }
 
         private void picBoxMain_Paint(object sender, PaintEventArgs e)
@@ -845,6 +1176,55 @@ namespace Doodle_241439P
                     using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(128, brushPen.Color)))
                     {
                         e.Graphics.DrawString(previewText, font, textBrush, previewMousePos.X, previewMousePos.Y);
+                    }
+                }
+            }
+
+            // Draw shape preview while dragging
+            if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
+                // Use brushPen.Width to ensure it matches the current brush size setting
+                using (Pen previewPen = new Pen(Color.FromArgb(180, brushPen.Color), brushPen.Width))
+                using (SolidBrush previewBrush = new SolidBrush(Color.FromArgb(128, brushPen.Color)))
+                {
+                    bool shiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+
+                    if (flagLine)
+                    {
+                        e.Graphics.DrawLine(previewPen, shapeStartPoint, shapeEndPoint);
+                    }
+                    else if (flagSquare)
+                    {
+                        Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                        if (shapeFilled)
+                        {
+                            e.Graphics.FillRectangle(previewBrush, rect);
+                        }
+                        e.Graphics.DrawRectangle(previewPen, rect);
+                    }
+                    else if (flagCircle)
+                    {
+                        Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                        if (shapeFilled)
+                        {
+                            e.Graphics.FillEllipse(previewBrush, rect);
+                        }
+                        e.Graphics.DrawEllipse(previewPen, rect);
+                    }
+                    else if (flagNgon)
+                    {
+                        // Use Ctrl for regular (equal-sided) polygon
+                        bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                        Point[] points = CalculateNgonPoints(shapeStartPoint, shapeEndPoint, ctrlPressed);
+                        if (points != null && points.Length > 0)
+                        {
+                            if (shapeFilled)
+                            {
+                                e.Graphics.FillPolygon(previewBrush, points);
+                            }
+                            e.Graphics.DrawPolygon(previewPen, points);
+                        }
                     }
                 }
             }
@@ -1038,16 +1418,26 @@ namespace Doodle_241439P
 
         private void ClearAllToolBorders()
         {
+            // Clear borders on all tool buttons
             picBoxBrush.BorderStyle = BorderStyle.None;
             picBoxLoad.BorderStyle = BorderStyle.None;
             picBoxErase.BorderStyle = BorderStyle.None;
             picBoxText.BorderStyle = BorderStyle.None;
+            picBoxLine.BorderStyle = BorderStyle.None;
+            picBoxSquare.BorderStyle = BorderStyle.None;
+            picBoxCircle.BorderStyle = BorderStyle.None;
+            picBoxNgon.BorderStyle = BorderStyle.None;
         }
 
         private void SetToolBorder(PictureBox tool)
         {
+            // Clear all borders first
             ClearAllToolBorders();
-            tool.BorderStyle = BorderStyle.FixedSingle;
+            // Set solid border only on the selected tool
+            if (tool != null)
+            {
+                tool.BorderStyle = BorderStyle.FixedSingle;
+            }
         }
 
 
@@ -1068,6 +1458,12 @@ namespace Doodle_241439P
             brushSize = value;
             lblBrushSize.Text = $"Brush: {brushSize}pts";
             brushPen.Width = brushSize;
+            
+            // Update shape preview if drawing a shape
+            if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void trackBarEraserSize_ValueChanged(object sender, EventArgs e)
@@ -1143,7 +1539,190 @@ namespace Doodle_241439P
             }
         }
 
+        private void comboBoxBrushType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxBrushType.SelectedIndex >= 0)
+            {
+                currentBrushType = (BrushType)comboBoxBrushType.SelectedIndex;
+            }
+        }
+
         private void lblImageScale_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        // Shape tool click handlers
+        private void picBoxLine_Click(object sender, EventArgs e)
+        {
+            AutoStampOnToolSwitch();
+            flagLine = true;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
+            flagBrush = false;
+            flagLoad = false;
+            flagErase = false;
+            flagText = false;
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxMain.Cursor = Cursors.Cross;
+            SetToolBorder(picBoxLine);
+        }
+
+        private void picBoxSquare_Click(object sender, EventArgs e)
+        {
+            AutoStampOnToolSwitch();
+            flagLine = false;
+            flagSquare = true;
+            flagCircle = false;
+            flagNgon = false;
+            flagBrush = false;
+            flagLoad = false;
+            flagErase = false;
+            flagText = false;
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxMain.Cursor = Cursors.Cross;
+            SetToolBorder(picBoxSquare);
+        }
+
+        private void picBoxCircle_Click(object sender, EventArgs e)
+        {
+            AutoStampOnToolSwitch();
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = true;
+            flagNgon = false;
+            flagBrush = false;
+            flagLoad = false;
+            flagErase = false;
+            flagText = false;
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxMain.Cursor = Cursors.Cross;
+            SetToolBorder(picBoxCircle);
+        }
+
+        private void picBoxNgon_Click(object sender, EventArgs e)
+        {
+            AutoStampOnToolSwitch();
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = true;
+            flagBrush = false;
+            flagLoad = false;
+            flagErase = false;
+            flagText = false;
+            picBoxBrushColor.Image = null;
+            picBoxBrushColor.BackColor = brushPen.Color;
+            picBoxMain.Cursor = Cursors.Cross;
+            SetToolBorder(picBoxNgon);
+        }
+
+        private void trackBarNgonSides_ValueChanged(object sender, EventArgs e)
+        {
+            ngonSides = trackBarNgonSides.Value;
+            lblNgonSides.Text = $"Sides: {ngonSides}";
+        }
+
+        private void checkBoxShapeFilled_CheckedChanged(object sender, EventArgs e)
+        {
+            shapeFilled = checkBoxShapeFilled.Checked;
+        }
+
+        // Create bitmap icons for shape buttons
+        private void CreateShapeButtonIcons()
+        {
+            // Square icon
+            Bitmap squareIcon = new Bitmap(30, 30);
+            using (Graphics g = Graphics.FromImage(squareIcon))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(5, 5, 20, 20);
+                g.DrawRectangle(new Pen(Color.Black, 2), rect);
+            }
+            picBoxSquare.Image = squareIcon;
+
+            // Circle icon
+            Bitmap circleIcon = new Bitmap(30, 30);
+            using (Graphics g = Graphics.FromImage(circleIcon))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(5, 5, 20, 20);
+                g.DrawEllipse(new Pen(Color.Black, 2), rect);
+            }
+            picBoxCircle.Image = circleIcon;
+
+            // N-gon icon (pentagon)
+            Bitmap ngonIcon = new Bitmap(30, 30);
+            using (Graphics g = Graphics.FromImage(ngonIcon))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Point[] points = new Point[]
+                {
+                    new Point(15, 5),    // Top
+                    new Point(25, 12),   // Right
+                    new Point(22, 22),   // Bottom right
+                    new Point(8, 22),    // Bottom left
+                    new Point(5, 12)     // Left
+                };
+                g.DrawPolygon(new Pen(Color.Black, 2), points);
+            }
+            picBoxNgon.Image = ngonIcon;
+        }
+
+        // Paint handlers for shape icon previews (backup if images fail to load)
+        private void picBoxSquare_Paint(object sender, PaintEventArgs e)
+        {
+            if (picBoxSquare.Image == null)
+            {
+                Rectangle rect = new Rectangle(5, 5, 20, 20);
+                e.Graphics.DrawRectangle(new Pen(Color.Black, 1), rect);
+            }
+        }
+
+        private void picBoxCircle_Paint(object sender, PaintEventArgs e)
+        {
+            if (picBoxCircle.Image == null)
+            {
+                Rectangle rect = new Rectangle(5, 5, 20, 20);
+                e.Graphics.DrawEllipse(new Pen(Color.Black, 1), rect);
+            }
+        }
+
+        private void picBoxNgon_Paint(object sender, PaintEventArgs e)
+        {
+            if (picBoxNgon.Image == null)
+            {
+                // Draw a pentagon icon (scaled for 30x30)
+                Point[] points = new Point[]
+                {
+                    new Point(15, 5),    // Top
+                    new Point(25, 12),   // Right
+                    new Point(22, 22),   // Bottom right
+                    new Point(8, 22),    // Bottom left
+                    new Point(5, 12)     // Left
+                };
+                e.Graphics.DrawPolygon(new Pen(Color.Black, 1), points);
+            }
+        }
+
+        private void lblFont_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void trackBarImageScale_Scroll(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblFontSize_Click(object sender, EventArgs e)
         {
 
         }

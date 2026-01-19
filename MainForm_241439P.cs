@@ -150,13 +150,10 @@ namespace Doodle_241439P
             // Initialize font and size
             selectedFontName = "Arial";
             selectedFontSize = 30;
-            comboBoxFont.SelectedIndex = 0;
 
             // Initialize brush color display (default to brush with black color)
             picBoxBrushColor.Image = null;
             picBoxBrushColor.BackColor = brushPen.Color;
-            trackBarFontSize.Value = 30;
-            lblFontSize.Text = "Size: 30pts";
 
             // Initialize text box with default text
             txtBoxText.Text = "Doodle Painting";
@@ -168,9 +165,17 @@ namespace Doodle_241439P
             checkBoxShapeFilled.Checked = false;
             shapeFilled = false;
 
-            // Initialize brush type ComboBox
-            comboBoxBrushType.SelectedIndex = 0; // Default to Paintbrush
+            // Initialize brush type
             currentBrushType = BrushType.Paintbrush;
+
+            // Set initial tool to brush mode (must be set before UpdateUnifiedComboBox)
+            flagBrush = true;
+
+            // Initialize unified slider (defaults to brush size)
+            UpdateUnifiedSlider();
+            
+            // Initialize unified ComboBox (defaults to brush type)
+            UpdateUnifiedComboBox();
 
             // Create icons for shape buttons (so they're visible in designer)
             CreateShapeButtonIcons();
@@ -182,9 +187,6 @@ namespace Doodle_241439P
 
             // Clear all borders initially
             ClearAllToolBorders();
-            
-            // Set initial tool to brush mode
-            flagBrush = true;
             if (brushCursor != null)
                 picBoxMain.Cursor = brushCursor;
             else
@@ -317,12 +319,14 @@ namespace Doodle_241439P
                             isDraggingImage = true;
                             dragOffset = new Point(e.Location.X - selectedImage.Bounds.X,
                                                    e.Location.Y - selectedImage.Bounds.Y);
+                            UpdateUnifiedSlider(); // Update slider when image is selected
                         }
                         else
                         {
                             // Clicked outside selected image - deselect it
                             selectedImage = null;
                             ShowImageControls(false);
+                            UpdateUnifiedSlider(); // Update slider when image is deselected
                             picBoxMain.Invalidate();
                         }
                     }
@@ -338,8 +342,8 @@ namespace Doodle_241439P
                         PlaceNewImage(loadedImage, e.Location);
                         selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed image
                         imageScale = 1.0f; // Reset scale
-                        trackBarImageScale.Value = 100;
                         ShowImageControls(true);
+                        UpdateUnifiedSlider(); // Update slider when new image is placed
                     }
                 }
             }
@@ -602,6 +606,8 @@ namespace Doodle_241439P
             flagNgon = false;
             picBoxMain.Cursor = eraserCursor ?? Cursors.Cross;
             SetToolBorder(picBoxErase);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void picBoxText_Click(object sender, EventArgs e)
@@ -626,6 +632,8 @@ namespace Doodle_241439P
             textBounds = Rectangle.Empty; // Reset text bounds when entering text mode
             picBoxMain.Cursor = Cursors.IBeam;
             SetToolBorder(picBoxText);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
             picBoxMain.Invalidate(); // Trigger preview
         }
 
@@ -805,6 +813,8 @@ namespace Doodle_241439P
                         picBoxBrushColor.Image = Properties.Resources.image;
                         picBoxBrushColor.BackColor = Color.Transparent;
                         SetToolBorder(picBoxLoad);
+                        UpdateUnifiedSlider();
+                        UpdateUnifiedComboBox();
 
                         MessageBox.Show("Image loaded. Click on canvas to place it.", "Load Image", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -834,6 +844,8 @@ namespace Doodle_241439P
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             SetToolBorder(picBoxBrush);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void txtBoxText_TextChanged(object sender, EventArgs e)
@@ -1365,12 +1377,14 @@ namespace Doodle_241439P
             picBoxMain.Invalidate();
         }
 
-        // Show/hide image controls (scale slider and OK button)
+        // Show/hide image controls (OK button - unified slider is handled by UpdateUnifiedSlider)
         private void ShowImageControls(bool show)
         {
-            trackBarImageScale.Visible = show;
-            lblImageScale.Visible = show;
             btnStampImage.Visible = show;
+            if (show)
+            {
+                UpdateUnifiedSlider(); // Update unified slider when image is selected
+            }
         }
 
         // Auto-stamp image when switching tools from load mode
@@ -1382,16 +1396,7 @@ namespace Doodle_241439P
             }
         }
 
-        // Handle image scale slider change
-        private void trackBarImageScale_ValueChanged(object sender, EventArgs e)
-        {
-            imageScale = trackBarImageScale.Value / 100.0f;
-            lblImageScale.Text = $"Scale: {trackBarImageScale.Value}%";
-            if (selectedImage != null)
-            {
-                RedrawCanvas();
-            }
-        }
+        // Old handler removed - image scale is now handled by trackBarUnified_ValueChanged
 
         // Handle OK/Stamp button click
         private void btnStampImage_Click(object sender, EventArgs e)
@@ -1441,71 +1446,6 @@ namespace Doodle_241439P
         }
 
 
-        private void trackBarBrushSize_ValueChanged(object sender, EventArgs e)
-        {
-            int value = trackBarBrushSize.Value;
-
-            // If Control is held, snap to nearest preset (10, 30, 50, 70)
-            if (Control.ModifierKeys == Keys.Control)
-            {
-                value = SnapToPresetSize(value);
-                // Temporarily remove handler to avoid recursion
-                trackBarBrushSize.ValueChanged -= trackBarBrushSize_ValueChanged;
-                trackBarBrushSize.Value = value;
-                trackBarBrushSize.ValueChanged += trackBarBrushSize_ValueChanged;
-            }
-
-            brushSize = value;
-            lblBrushSize.Text = $"Brush: {brushSize}pts";
-            brushPen.Width = brushSize;
-            
-            // Update shape preview if drawing a shape
-            if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
-            {
-                picBoxMain.Invalidate();
-            }
-        }
-
-        private void trackBarEraserSize_ValueChanged(object sender, EventArgs e)
-        {
-            int value = trackBarEraserSize.Value;
-
-            // If Control is held, snap to nearest preset (10, 30, 50, 70)
-            if (Control.ModifierKeys == Keys.Control)
-            {
-                value = SnapToPresetSize(value);
-                // Temporarily remove handler to avoid recursion
-                trackBarEraserSize.ValueChanged -= trackBarEraserSize_ValueChanged;
-                trackBarEraserSize.Value = value;
-                trackBarEraserSize.ValueChanged += trackBarEraserSize_ValueChanged;
-            }
-
-            eraserSize = value;
-            eraserPen.Width = eraserSize; // Update eraser pen width
-            lblEraserSize.Text = $"Eraser: {eraserSize}pts";
-        }
-
-        private void trackBarFontSize_ValueChanged(object sender, EventArgs e)
-        {
-            int value = trackBarFontSize.Value;
-
-            // If Control is held, snap to nearest preset (10, 30, 50, 70)
-            if (Control.ModifierKeys == Keys.Control)
-            {
-                value = SnapToPresetSize(value);
-                // Temporarily remove handler to avoid recursion
-                trackBarFontSize.ValueChanged -= trackBarFontSize_ValueChanged;
-                trackBarFontSize.Value = value;
-                trackBarFontSize.ValueChanged += trackBarFontSize_ValueChanged;
-            }
-
-            selectedFontSize = value;
-            lblFontSize.Text = $"Size: {selectedFontSize}pts";
-            if (flagText)
-            {
-                picBoxMain.Invalidate(); // Update preview
-            }
-        }
 
         private static int SnapToPresetSize(int value)
         {
@@ -1527,11 +1467,61 @@ namespace Doodle_241439P
             return nearest;
         }
 
-        private void comboBoxFont_SelectedIndexChanged(object sender, EventArgs e)
+        // Old handlers removed - functionality moved to comboBoxUnified_SelectedIndexChanged
+
+        // Update unified ComboBox based on selected tool
+        private void UpdateUnifiedComboBox()
         {
-            if (comboBoxFont.SelectedItem != null)
+            // Temporarily remove handler to avoid recursion
+            comboBoxUnified.SelectedIndexChanged -= comboBoxUnified_SelectedIndexChanged;
+
+            if (flagBrush || flagLine || flagSquare || flagCircle || flagNgon)
             {
-                selectedFontName = comboBoxFont.SelectedItem.ToString() ?? "Arial";
+                // Brush or shape tools - show brush types
+                comboBoxUnified.Items.Clear();
+                comboBoxUnified.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
+                comboBoxUnified.SelectedIndex = (int)currentBrushType;
+                lblUnifiedCombo.Text = "Brush Type:";
+                comboBoxUnified.Visible = true;
+                lblUnifiedCombo.Visible = true;
+            }
+            else if (flagText)
+            {
+                // Text tool - show fonts
+                comboBoxUnified.Items.Clear();
+                comboBoxUnified.Items.AddRange(new object[] { "Arial", "Times New Roman", "Courier New", "Comic Sans MS", "Verdana" });
+                // Find and select current font
+                int fontIndex = comboBoxUnified.Items.IndexOf(selectedFontName);
+                comboBoxUnified.SelectedIndex = fontIndex >= 0 ? fontIndex : 0;
+                lblUnifiedCombo.Text = "Font:";
+                comboBoxUnified.Visible = true;
+                lblUnifiedCombo.Visible = true;
+            }
+            else
+            {
+                // Other tools - hide ComboBox
+                comboBoxUnified.Visible = false;
+                lblUnifiedCombo.Visible = false;
+            }
+
+            // Re-add handler
+            comboBoxUnified.SelectedIndexChanged += comboBoxUnified_SelectedIndexChanged;
+        }
+
+        // Unified ComboBox value changed handler
+        private void comboBoxUnified_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxUnified.SelectedIndex < 0) return;
+
+            if (flagBrush || flagLine || flagSquare || flagCircle || flagNgon)
+            {
+                // Brush or shape tools - update brush type
+                currentBrushType = (BrushType)comboBoxUnified.SelectedIndex;
+            }
+            else if (flagText)
+            {
+                // Text tool - update font
+                selectedFontName = comboBoxUnified.SelectedItem?.ToString() ?? "Arial";
                 if (flagText)
                 {
                     picBoxMain.Invalidate(); // Update preview
@@ -1539,18 +1529,131 @@ namespace Doodle_241439P
             }
         }
 
-        private void comboBoxBrushType_SelectedIndexChanged(object sender, EventArgs e)
+        // Update unified slider based on selected tool
+        private void UpdateUnifiedSlider()
         {
-            if (comboBoxBrushType.SelectedIndex >= 0)
+            // Temporarily remove handler to avoid recursion
+            trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
+
+            if (flagBrush || flagLine || flagSquare || flagCircle || flagNgon)
             {
-                currentBrushType = (BrushType)comboBoxBrushType.SelectedIndex;
+                // Brush or shape tools - use brush size
+                trackBarUnified.Minimum = 10;
+                trackBarUnified.Maximum = 70;
+                trackBarUnified.TickFrequency = 10;
+                trackBarUnified.Value = brushSize;
+                lblUnified.Text = $"Brush: {brushSize}pts";
+            }
+            else if (flagErase)
+            {
+                // Eraser tool - use eraser size
+                trackBarUnified.Minimum = 10;
+                trackBarUnified.Maximum = 70;
+                trackBarUnified.TickFrequency = 10;
+                trackBarUnified.Value = eraserSize;
+                lblUnified.Text = $"Eraser: {eraserSize}pts";
+            }
+            else if (flagText)
+            {
+                // Text tool - use font size
+                trackBarUnified.Minimum = 1;
+                trackBarUnified.Maximum = 70;
+                trackBarUnified.TickFrequency = 10;
+                trackBarUnified.Value = selectedFontSize;
+                lblUnified.Text = $"Font Size: {selectedFontSize}pts";
+            }
+            else if (flagLoad && selectedImage != null)
+            {
+                // Image load tool with selected image - use image scale
+                trackBarUnified.Minimum = 50;
+                trackBarUnified.Maximum = 200;
+                trackBarUnified.TickFrequency = 25;
+                trackBarUnified.Value = (int)(imageScale * 100);
+                lblUnified.Text = $"Scale: {(int)(imageScale * 100)}%";
+            }
+            else
+            {
+                // Default to brush size
+                trackBarUnified.Minimum = 10;
+                trackBarUnified.Maximum = 70;
+                trackBarUnified.TickFrequency = 10;
+                trackBarUnified.Value = brushSize;
+                lblUnified.Text = $"Brush: {brushSize}pts";
+            }
+
+            // Re-add handler
+            trackBarUnified.ValueChanged += trackBarUnified_ValueChanged;
+        }
+
+        // Unified slider value changed handler
+        private void trackBarUnified_ValueChanged(object sender, EventArgs e)
+        {
+            int value = trackBarUnified.Value;
+
+            if (flagBrush || flagLine || flagSquare || flagCircle || flagNgon)
+            {
+                // Brush or shape tools - update brush size
+                if (Control.ModifierKeys == Keys.Control)
+                {
+                    value = SnapToPresetSize(value);
+                    trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
+                    trackBarUnified.Value = value;
+                    trackBarUnified.ValueChanged += trackBarUnified_ValueChanged;
+                }
+                brushSize = value;
+                brushPen.Width = brushSize;
+                lblUnified.Text = $"Brush: {brushSize}pts";
+                
+                // Update shape preview if drawing
+                if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
+                {
+                    picBoxMain.Invalidate();
+                }
+            }
+            else if (flagErase)
+            {
+                // Eraser tool - update eraser size
+                if (Control.ModifierKeys == Keys.Control)
+                {
+                    value = SnapToPresetSize(value);
+                    trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
+                    trackBarUnified.Value = value;
+                    trackBarUnified.ValueChanged += trackBarUnified_ValueChanged;
+                }
+                eraserSize = value;
+                eraserPen.Width = eraserSize;
+                lblUnified.Text = $"Eraser: {eraserSize}pts";
+            }
+            else if (flagText)
+            {
+                // Text tool - update font size
+                if (Control.ModifierKeys == Keys.Control)
+                {
+                    value = SnapToPresetSize(value);
+                    trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
+                    trackBarUnified.Value = value;
+                    trackBarUnified.ValueChanged += trackBarUnified_ValueChanged;
+                }
+                selectedFontSize = value;
+                lblUnified.Text = $"Font Size: {selectedFontSize}pts";
+                if (flagText)
+                {
+                    picBoxMain.Invalidate(); // Update preview
+                }
+            }
+            else if (flagLoad && selectedImage != null)
+            {
+                // Image load tool - update image scale
+                imageScale = value / 100.0f;
+                lblUnified.Text = $"Scale: {value}%";
+                if (selectedImage != null)
+                {
+                    RedrawCanvas();
+                }
             }
         }
 
-        private void lblImageScale_Click(object sender, EventArgs e)
-        {
-
-        }
+        // Removed - lblImageScale no longer exists
 
         // Shape tool click handlers
         private void picBoxLine_Click(object sender, EventArgs e)
@@ -1568,6 +1671,8 @@ namespace Doodle_241439P
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = Cursors.Cross;
             SetToolBorder(picBoxLine);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void picBoxSquare_Click(object sender, EventArgs e)
@@ -1585,6 +1690,8 @@ namespace Doodle_241439P
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = Cursors.Cross;
             SetToolBorder(picBoxSquare);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void picBoxCircle_Click(object sender, EventArgs e)
@@ -1602,6 +1709,8 @@ namespace Doodle_241439P
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = Cursors.Cross;
             SetToolBorder(picBoxCircle);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void picBoxNgon_Click(object sender, EventArgs e)
@@ -1619,6 +1728,8 @@ namespace Doodle_241439P
             picBoxBrushColor.BackColor = brushPen.Color;
             picBoxMain.Cursor = Cursors.Cross;
             SetToolBorder(picBoxNgon);
+            UpdateUnifiedSlider();
+            UpdateUnifiedComboBox();
         }
 
         private void trackBarNgonSides_ValueChanged(object sender, EventArgs e)
@@ -1717,15 +1828,9 @@ namespace Doodle_241439P
 
         }
 
-        private void trackBarImageScale_Scroll(object sender, EventArgs e)
-        {
+        // Removed - trackBarImageScale no longer exists
 
-        }
-
-        private void lblFontSize_Click(object sender, EventArgs e)
-        {
-
-        }
+        // Removed - lblFontSize no longer exists
     }
 
     // Class to represent a placed image on the canvas

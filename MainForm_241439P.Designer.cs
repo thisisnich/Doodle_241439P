@@ -66,19 +66,11 @@ namespace Doodle_241439P
             picBoxText = new PictureBox();
             picBoxLoad = new PictureBox();
             picBoxBrush = new PictureBox();
-            trackBarBrushSize = new TrackBar();
-            lblBrushSize = new Label();
-            comboBoxBrushType = new ComboBox();
-            lblBrushType = new Label();
-            trackBarEraserSize = new TrackBar();
-            lblEraserSize = new Label();
-            comboBoxFont = new ComboBox();
-            trackBarFontSize = new TrackBar();
-            lblFont = new Label();
-            lblFontSize = new Label();
-            trackBarImageScale = new TrackBar();
-            lblImageScale = new Label();
             btnStampImage = new Button();
+            trackBarUnified = new TrackBar();
+            lblUnified = new Label();
+            comboBoxUnified = new ComboBox();
+            lblUnifiedCombo = new Label();
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).BeginInit();
             panelColor.SuspendLayout();
@@ -105,10 +97,7 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarFontSize).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarImageScale).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarUnified).BeginInit();
             SuspendLayout();
             // 
             // menuStrip1
@@ -118,7 +107,7 @@ namespace Doodle_241439P
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(914, 30);
+            menuStrip1.Size = new Size(835, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -146,9 +135,9 @@ namespace Doodle_241439P
             // picBoxMain
             // 
             picBoxMain.BackColor = Color.LightGray;
-            picBoxMain.Location = new Point(10, 40);
+            picBoxMain.Location = new Point(12, 158);
             picBoxMain.Name = "picBoxMain";
-            picBoxMain.Size = new Size(724, 410);
+            picBoxMain.Size = new Size(813, 410);
             picBoxMain.TabIndex = 1;
             picBoxMain.TabStop = false;
             picBoxMain.Paint += picBoxMain_Paint;
@@ -169,7 +158,7 @@ namespace Doodle_241439P
             panelColor.Controls.Add(picBoxYellow);
             panelColor.Controls.Add(picBoxWhite);
             panelColor.Controls.Add(picBoxCustom);
-            panelColor.Location = new Point(11, 463);
+            panelColor.Location = new Point(12, 33);
             panelColor.Name = "panelColor";
             panelColor.Size = new Size(253, 112);
             panelColor.TabIndex = 2;
@@ -268,7 +257,7 @@ namespace Doodle_241439P
             // 
             picBoxWhite.BackColor = Color.White;
             picBoxWhite.BorderStyle = BorderStyle.FixedSingle;
-            picBoxWhite.Location = new Point(218, 3);
+            picBoxWhite.Location = new Point(182, 73);
             picBoxWhite.Name = "picBoxWhite";
             picBoxWhite.Size = new Size(30, 30);
             picBoxWhite.TabIndex = 12;
@@ -280,7 +269,7 @@ namespace Doodle_241439P
             picBoxCustom.BackColor = Color.FromArgb(128, 128, 128);
             picBoxCustom.BorderStyle = BorderStyle.FixedSingle;
             picBoxCustom.Image = Properties.Resources.eyedropper;
-            picBoxCustom.Location = new Point(218, 37);
+            picBoxCustom.Location = new Point(218, 73);
             picBoxCustom.Name = "picBoxCustom";
             picBoxCustom.Size = new Size(30, 30);
             picBoxCustom.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -297,9 +286,9 @@ namespace Doodle_241439P
             panelShapes.Controls.Add(lblNgonSides);
             panelShapes.Controls.Add(checkBoxShapeFilled);
             panelShapes.Controls.Add(trackBarNgonSides);
-            panelShapes.Location = new Point(270, 463);
+            panelShapes.Location = new Point(271, 33);
             panelShapes.Name = "panelShapes";
-            panelShapes.Size = new Size(300, 112);
+            panelShapes.Size = new Size(215, 112);
             panelShapes.TabIndex = 36;
             // 
             // picBoxLine
@@ -365,7 +354,7 @@ namespace Doodle_241439P
             // checkBoxShapeFilled
             // 
             checkBoxShapeFilled.AutoSize = true;
-            checkBoxShapeFilled.Location = new Point(230, 7);
+            checkBoxShapeFilled.Location = new Point(147, 43);
             checkBoxShapeFilled.Name = "checkBoxShapeFilled";
             checkBoxShapeFilled.Size = new Size(67, 24);
             checkBoxShapeFilled.TabIndex = 35;
@@ -379,14 +368,14 @@ namespace Doodle_241439P
             trackBarNgonSides.Maximum = 20;
             trackBarNgonSides.Minimum = 3;
             trackBarNgonSides.Name = "trackBarNgonSides";
-            trackBarNgonSides.Size = new Size(294, 56);
+            trackBarNgonSides.Size = new Size(138, 56);
             trackBarNgonSides.TabIndex = 33;
             trackBarNgonSides.Value = 5;
             trackBarNgonSides.ValueChanged += trackBarNgonSides_ValueChanged;
             // 
             // txtBoxText
             // 
-            txtBoxText.Location = new Point(270, 469);
+            txtBoxText.Location = new Point(271, 39);
             txtBoxText.Name = "txtBoxText";
             txtBoxText.Size = new Size(200, 27);
             txtBoxText.TabIndex = 12;
@@ -396,7 +385,7 @@ namespace Doodle_241439P
             // 
             picBoxSave.BackColor = Color.Transparent;
             picBoxSave.Image = Properties.Resources.diskette;
-            picBoxSave.Location = new Point(852, 96);
+            picBoxSave.Location = new Point(606, 95);
             picBoxSave.Name = "picBoxSave";
             picBoxSave.Size = new Size(50, 50);
             picBoxSave.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -408,7 +397,7 @@ namespace Doodle_241439P
             // 
             picBoxClear.BackColor = Color.Transparent;
             picBoxClear.Image = Properties.Resources.trash;
-            picBoxClear.Location = new Point(796, 96);
+            picBoxClear.Location = new Point(550, 95);
             picBoxClear.Name = "picBoxClear";
             picBoxClear.Size = new Size(50, 50);
             picBoxClear.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -420,7 +409,7 @@ namespace Doodle_241439P
             // 
             picBoxErase.BackColor = Color.Transparent;
             picBoxErase.Image = Properties.Resources.eraser;
-            picBoxErase.Location = new Point(740, 40);
+            picBoxErase.Location = new Point(494, 33);
             picBoxErase.Name = "picBoxErase";
             picBoxErase.Size = new Size(50, 50);
             picBoxErase.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -432,7 +421,7 @@ namespace Doodle_241439P
             // 
             picBoxText.BackColor = Color.Transparent;
             picBoxText.Image = Properties.Resources.text;
-            picBoxText.Location = new Point(796, 40);
+            picBoxText.Location = new Point(550, 33);
             picBoxText.Name = "picBoxText";
             picBoxText.Size = new Size(50, 50);
             picBoxText.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -444,7 +433,7 @@ namespace Doodle_241439P
             // 
             picBoxLoad.BackColor = Color.Transparent;
             picBoxLoad.Image = Properties.Resources.image;
-            picBoxLoad.Location = new Point(852, 40);
+            picBoxLoad.Location = new Point(606, 33);
             picBoxLoad.Name = "picBoxLoad";
             picBoxLoad.Size = new Size(50, 50);
             picBoxLoad.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -456,7 +445,7 @@ namespace Doodle_241439P
             // 
             picBoxBrush.BackColor = Color.Transparent;
             picBoxBrush.Image = Properties.Resources.paint_brush;
-            picBoxBrush.Location = new Point(740, 96);
+            picBoxBrush.Location = new Point(494, 95);
             picBoxBrush.Name = "picBoxBrush";
             picBoxBrush.Size = new Size(50, 50);
             picBoxBrush.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -464,137 +453,9 @@ namespace Doodle_241439P
             picBoxBrush.TabStop = false;
             picBoxBrush.Click += picBoxBrush_Click;
             // 
-            // trackBarBrushSize
-            // 
-            trackBarBrushSize.Location = new Point(740, 293);
-            trackBarBrushSize.Maximum = 70;
-            trackBarBrushSize.Minimum = 10;
-            trackBarBrushSize.Name = "trackBarBrushSize";
-            trackBarBrushSize.Size = new Size(150, 56);
-            trackBarBrushSize.TabIndex = 20;
-            trackBarBrushSize.TickFrequency = 10;
-            trackBarBrushSize.Value = 30;
-            trackBarBrushSize.ValueChanged += trackBarBrushSize_ValueChanged;
-            // 
-            // lblBrushSize
-            // 
-            lblBrushSize.AutoSize = true;
-            lblBrushSize.Location = new Point(740, 273);
-            lblBrushSize.Name = "lblBrushSize";
-            lblBrushSize.Size = new Size(88, 20);
-            lblBrushSize.TabIndex = 22;
-            lblBrushSize.Text = "Brush: 30pts";
-            // 
-            // comboBoxBrushType
-            // 
-            comboBoxBrushType.DropDownStyle = ComboBoxStyle.DropDownList;
-            comboBoxBrushType.FormattingEnabled = true;
-            comboBoxBrushType.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
-            comboBoxBrushType.Location = new Point(740, 352);
-            comboBoxBrushType.Name = "comboBoxBrushType";
-            comboBoxBrushType.Size = new Size(150, 28);
-            comboBoxBrushType.TabIndex = 37;
-            comboBoxBrushType.SelectedIndexChanged += comboBoxBrushType_SelectedIndexChanged;
-            // 
-            // lblBrushType
-            // 
-            lblBrushType.AutoSize = true;
-            lblBrushType.Location = new Point(740, 329);
-            lblBrushType.Name = "lblBrushType";
-            lblBrushType.Size = new Size(83, 20);
-            lblBrushType.TabIndex = 36;
-            lblBrushType.Text = "Brush Type:";
-            // 
-            // trackBarEraserSize
-            // 
-            trackBarEraserSize.Location = new Point(740, 408);
-            trackBarEraserSize.Maximum = 70;
-            trackBarEraserSize.Minimum = 10;
-            trackBarEraserSize.Name = "trackBarEraserSize";
-            trackBarEraserSize.Size = new Size(150, 56);
-            trackBarEraserSize.TabIndex = 27;
-            trackBarEraserSize.TickFrequency = 10;
-            trackBarEraserSize.Value = 30;
-            trackBarEraserSize.ValueChanged += trackBarEraserSize_ValueChanged;
-            // 
-            // lblEraserSize
-            // 
-            lblEraserSize.AutoSize = true;
-            lblEraserSize.Location = new Point(740, 388);
-            lblEraserSize.Name = "lblEraserSize";
-            lblEraserSize.Size = new Size(92, 20);
-            lblEraserSize.TabIndex = 28;
-            lblEraserSize.Text = "Eraser: 30pts";
-            // 
-            // comboBoxFont
-            // 
-            comboBoxFont.DropDownStyle = ComboBoxStyle.DropDownList;
-            comboBoxFont.FormattingEnabled = true;
-            comboBoxFont.Items.AddRange(new object[] { "Arial", "Times New Roman", "Courier New", "Comic Sans MS", "Verdana" });
-            comboBoxFont.Location = new Point(740, 176);
-            comboBoxFont.Name = "comboBoxFont";
-            comboBoxFont.Size = new Size(162, 28);
-            comboBoxFont.TabIndex = 24;
-            comboBoxFont.SelectedIndexChanged += comboBoxFont_SelectedIndexChanged;
-            // 
-            // trackBarFontSize
-            // 
-            trackBarFontSize.Location = new Point(740, 231);
-            trackBarFontSize.Maximum = 70;
-            trackBarFontSize.Minimum = 1;
-            trackBarFontSize.Name = "trackBarFontSize";
-            trackBarFontSize.Size = new Size(150, 56);
-            trackBarFontSize.TabIndex = 26;
-            trackBarFontSize.TickFrequency = 10;
-            trackBarFontSize.Value = 30;
-            trackBarFontSize.ValueChanged += trackBarFontSize_ValueChanged;
-            // 
-            // lblFont
-            // 
-            lblFont.AutoSize = true;
-            lblFont.Location = new Point(740, 149);
-            lblFont.Name = "lblFont";
-            lblFont.Size = new Size(41, 20);
-            lblFont.TabIndex = 23;
-            lblFont.Text = "Font:";
-            // 
-            // lblFontSize
-            // 
-            lblFontSize.AutoSize = true;
-            lblFontSize.Location = new Point(740, 207);
-            lblFontSize.Name = "lblFontSize";
-            lblFontSize.Size = new Size(79, 20);
-            lblFontSize.TabIndex = 25;
-            lblFontSize.Text = "Size: 30pts";
-            lblFontSize.Click += lblFontSize_Click;
-            // 
-            // trackBarImageScale
-            // 
-            trackBarImageScale.Location = new Point(740, 452);
-            trackBarImageScale.Maximum = 200;
-            trackBarImageScale.Minimum = 50;
-            trackBarImageScale.Name = "trackBarImageScale";
-            trackBarImageScale.Size = new Size(174, 56);
-            trackBarImageScale.TabIndex = 2;
-            trackBarImageScale.TickFrequency = 25;
-            trackBarImageScale.Value = 100;
-            trackBarImageScale.Visible = false;
-            trackBarImageScale.ValueChanged += trackBarImageScale_ValueChanged;
-            // 
-            // lblImageScale
-            // 
-            lblImageScale.AutoSize = true;
-            lblImageScale.Location = new Point(745, 426);
-            lblImageScale.Name = "lblImageScale";
-            lblImageScale.Size = new Size(87, 20);
-            lblImageScale.TabIndex = 1;
-            lblImageScale.Text = "Scale: 100%";
-            lblImageScale.Visible = false;
-            lblImageScale.Click += lblImageScale_Click;
-            // 
             // btnStampImage
             // 
-            btnStampImage.Location = new Point(832, 411);
+            btnStampImage.Location = new Point(663, 95);
             btnStampImage.Name = "btnStampImage";
             btnStampImage.Size = new Size(82, 35);
             btnStampImage.TabIndex = 0;
@@ -603,24 +464,58 @@ namespace Doodle_241439P
             btnStampImage.Visible = false;
             btnStampImage.Click += btnStampImage_Click;
             // 
+            // trackBarUnified
+            // 
+            trackBarUnified.Location = new Point(663, 56);
+            trackBarUnified.Maximum = 70;
+            trackBarUnified.Minimum = 10;
+            trackBarUnified.Name = "trackBarUnified";
+            trackBarUnified.Size = new Size(162, 56);
+            trackBarUnified.TabIndex = 38;
+            trackBarUnified.TickFrequency = 10;
+            trackBarUnified.Value = 30;
+            trackBarUnified.ValueChanged += trackBarUnified_ValueChanged;
+            // 
+            // lblUnified
+            // 
+            lblUnified.AutoSize = true;
+            lblUnified.Location = new Point(663, 33);
+            lblUnified.Name = "lblUnified";
+            lblUnified.Size = new Size(88, 20);
+            lblUnified.TabIndex = 39;
+            lblUnified.Text = "Brush: 30pts";
+            // 
+            // comboBoxUnified
+            // 
+            comboBoxUnified.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxUnified.FormattingEnabled = true;
+            comboBoxUnified.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
+            comboBoxUnified.Location = new Point(662, 117);
+            comboBoxUnified.Name = "comboBoxUnified";
+            comboBoxUnified.Size = new Size(162, 28);
+            comboBoxUnified.TabIndex = 41;
+            comboBoxUnified.SelectedIndexChanged += comboBoxUnified_SelectedIndexChanged;
+            // 
+            // lblUnifiedCombo
+            // 
+            lblUnifiedCombo.AutoSize = true;
+            lblUnifiedCombo.Location = new Point(662, 95);
+            lblUnifiedCombo.Name = "lblUnifiedCombo";
+            lblUnifiedCombo.Size = new Size(83, 20);
+            lblUnifiedCombo.TabIndex = 40;
+            lblUnifiedCombo.Text = "Brush Type:";
+            // 
             // MainForm_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(914, 587);
+            ClientSize = new Size(835, 587);
             Controls.Add(panelShapes);
             Controls.Add(btnStampImage);
-            Controls.Add(lblImageScale);
-            Controls.Add(trackBarImageScale);
-            Controls.Add(lblFontSize);
-            Controls.Add(comboBoxFont);
-            Controls.Add(lblFont);
-            Controls.Add(lblEraserSize);
-            Controls.Add(trackBarEraserSize);
-            Controls.Add(comboBoxBrushType);
-            Controls.Add(lblBrushType);
-            Controls.Add(lblBrushSize);
-            Controls.Add(trackBarBrushSize);
+            Controls.Add(comboBoxUnified);
+            Controls.Add(lblUnifiedCombo);
+            Controls.Add(lblUnified);
+            Controls.Add(trackBarUnified);
             Controls.Add(picBoxBrush);
             Controls.Add(picBoxLoad);
             Controls.Add(picBoxText);
@@ -631,7 +526,6 @@ namespace Doodle_241439P
             Controls.Add(panelColor);
             Controls.Add(picBoxMain);
             Controls.Add(menuStrip1);
-            Controls.Add(trackBarFontSize);
             MainMenuStrip = menuStrip1;
             Margin = new Padding(3, 4, 3, 4);
             Name = "MainForm_241439P";
@@ -667,10 +561,7 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxText).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxLoad).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxBrush).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarBrushSize).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarEraserSize).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarFontSize).EndInit();
-            ((System.ComponentModel.ISupportInitialize)trackBarImageScale).EndInit();
+            ((System.ComponentModel.ISupportInitialize)trackBarUnified).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -702,18 +593,10 @@ namespace Doodle_241439P
         private System.Windows.Forms.PictureBox picBoxText;
         private System.Windows.Forms.PictureBox picBoxLoad;
         private System.Windows.Forms.PictureBox picBoxBrush;
-        private System.Windows.Forms.TrackBar trackBarBrushSize;
-        private System.Windows.Forms.Label lblBrushSize;
-        private System.Windows.Forms.ComboBox comboBoxBrushType;
-        private System.Windows.Forms.Label lblBrushType;
-        private System.Windows.Forms.TrackBar trackBarEraserSize;
-        private System.Windows.Forms.Label lblEraserSize;
-        private System.Windows.Forms.Label lblFont;
-        private System.Windows.Forms.ComboBox comboBoxFont;
-        private System.Windows.Forms.Label lblFontSize;
-        private System.Windows.Forms.TrackBar trackBarFontSize;
-        private System.Windows.Forms.TrackBar trackBarImageScale;
-        private System.Windows.Forms.Label lblImageScale;
+        private System.Windows.Forms.TrackBar trackBarUnified;
+        private System.Windows.Forms.Label lblUnified;
+        private System.Windows.Forms.ComboBox comboBoxUnified;
+        private System.Windows.Forms.Label lblUnifiedCombo;
         private System.Windows.Forms.Button btnStampImage;
         private System.Windows.Forms.PictureBox picBoxLine;
         private System.Windows.Forms.PictureBox picBoxSquare;

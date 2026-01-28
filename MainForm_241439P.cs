@@ -35,8 +35,8 @@ namespace Doodle_241439P
 
     public partial class MainForm_241439P : Form
     {
-        Bitmap bm;
-        Graphics g;
+        Bitmap bm = null!; // Set in MainForm_241439P_Load
+        Graphics g = null!; // Set in MainForm_241439P_Load
         DrawingPen brushPen = new DrawingPen(DrawingColor.Black, 8);  // Thick pen for brush drawing
         DrawingPen eraserPen = new DrawingPen(DrawingColor.LightGray, 30);  // Pen for eraser drawing
         SolidBrush brush = new SolidBrush(DrawingColor.Black);
@@ -132,7 +132,7 @@ namespace Doodle_241439P
 
         private void imageFiltersToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Bitmap sourceImage = null;
+            Bitmap? sourceImage = null;
             bool applyToSelectedImage = false;
 
             // Determine what to filter
@@ -300,7 +300,7 @@ namespace Doodle_241439P
                     UpdateScrollBars();
                     
                     // Redraw with new viewport position
-                    picBoxMain.Invalidate();
+                    picBoxMain?.Invalidate();
                     
                     m.Result = IntPtr.Zero;
                     return;
@@ -573,7 +573,7 @@ namespace Doodle_241439P
         }
 
         // Helper method to create a cursor from a bitmap with custom hot spot
-        private Cursor CreateCursorFromBitmap(Bitmap bitmap, Point hotSpot)
+        private Cursor? CreateCursorFromBitmap(Bitmap bitmap, Point hotSpot)
         {
             try
             {

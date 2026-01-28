@@ -5,34 +5,34 @@ namespace Doodle_241439P
 {
     public partial class ImageFilterDialog : Form
     {
-        private Bitmap originalImage;
-        private Bitmap previewImage;
-        private PictureBox previewBox;
-        private RadioButton rbNone;
-        private RadioButton rbGrayscale;
-        private RadioButton rbSepia;
-        private RadioButton rbInvert;
-        private RadioButton rbBrightness;
-        private RadioButton rbContrast;
-        private RadioButton rbSaturation;
-        private RadioButton rbCustomRGB;
-        private TrackBar trackBarBrightness;
-        private TrackBar trackBarContrast;
-        private TrackBar trackBarSaturation;
-        private TrackBar trackBarRed;
-        private TrackBar trackBarGreen;
-        private TrackBar trackBarBlue;
-        private Label lblBrightness;
-        private Label lblContrast;
-        private Label lblSaturation;
-        private Label lblRed;
-        private Label lblGreen;
-        private Label lblBlue;
-        private Button btnReset;
-        private Button btnApply;
-        private Button btnCancel;
-        private Panel panelControls;
-        private Panel panelPreview;
+        private Bitmap originalImage = null!;
+        private Bitmap previewImage = null!;
+        private PictureBox previewBox = null!;
+        private RadioButton rbNone = null!;
+        private RadioButton rbGrayscale = null!;
+        private RadioButton rbSepia = null!;
+        private RadioButton rbInvert = null!;
+        private RadioButton rbBrightness = null!;
+        private RadioButton rbContrast = null!;
+        private RadioButton rbSaturation = null!;
+        private RadioButton rbCustomRGB = null!;
+        private TrackBar trackBarBrightness = null!;
+        private TrackBar trackBarContrast = null!;
+        private TrackBar trackBarSaturation = null!;
+        private TrackBar trackBarRed = null!;
+        private TrackBar trackBarGreen = null!;
+        private TrackBar trackBarBlue = null!;
+        private Label lblBrightness = null!;
+        private Label lblContrast = null!;
+        private Label lblSaturation = null!;
+        private Label lblRed = null!;
+        private Label lblGreen = null!;
+        private Label lblBlue = null!;
+        private Button btnReset = null!;
+        private Button btnApply = null!;
+        private Button btnCancel = null!;
+        private Panel panelControls = null!;
+        private Panel panelPreview = null!;
 
         public Bitmap? FilteredImage { get; private set; }
 

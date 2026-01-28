@@ -7,7 +7,7 @@ namespace Doodle_241439P
 {
     public partial class SplashScreen : Form
     {
-        private System.Windows.Forms.Timer timer;
+        private System.Windows.Forms.Timer timer = null!; // Set in InitializeComponent()
         private int displayTime = 2000; // Display for 2 seconds
 
         public SplashScreen()
@@ -58,7 +58,7 @@ namespace Doodle_241439P
             this.ResumeLayout(false);
         }
 
-        private void SplashScreen_Paint(object sender, PaintEventArgs e)
+        private void SplashScreen_Paint(object? sender, PaintEventArgs e)
         {
             // Draw default splash screen if image not found
             Graphics g = e.Graphics;
@@ -76,7 +76,7 @@ namespace Doodle_241439P
             }
         }
 
-        private void Timer_Tick(object sender, EventArgs e)
+        private void Timer_Tick(object? sender, EventArgs e)
         {
             timer.Stop();
             this.Close();

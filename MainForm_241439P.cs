@@ -93,10 +93,18 @@ namespace Doodle_241439P
         const int RESIZE_HANDLE_SIZE = 8;  // Size of resize handles in pixels
         Cursor? brushCursor = null;
         Cursor? eraserCursor = null;
+        Cursor? fillCursor = null;
+
+        // Cache for emoji bitmaps by (text, size) so repeated placements reuse rendered bitmaps
+        private readonly Dictionary<(string emoji, int size), Bitmap> emojiBitmapCache = new Dictionary<(string, int), Bitmap>();
 
         // Speed tracking for wet brush
         DateTime lastMouseMoveTime = DateTime.Now;
         Point lastMousePosition = Point.Empty;
+
+        // Stroke overlay for opacity brushes (Paintbrush, Marker, Wet Brush): draw to overlay at 100%, paste once on release so max opacity is respected
+        Bitmap? strokeOverlayBitmap = null;
+        Graphics? strokeOverlayGraphics = null;
 
         // Shape tool variables
         int ngonSides = 5;  // Default pentagon
@@ -354,6 +362,9 @@ namespace Doodle_241439P
             // Initialize emoji text (default)
             emojiText = "💀";
 
+            // Warm up WPF/Emoji pipeline so first emoji placement is fast
+            _ = CreateEmojiBitmap("😀", 32);
+
             // Initialize N-gon trackbar
             trackBarNgonSides.Value = 5;
             ngonSides = 5;
@@ -389,6 +400,7 @@ namespace Doodle_241439P
             // Hot spot at bottom center (tip of brush/eraser) for better precision
             brushCursor = CreateCursorFromBitmap(Properties.Resources.paint_brush, new Point(16, 28));
             eraserCursor = CreateCursorFromBitmap(Properties.Resources.eraser, new Point(16, 28));
+            fillCursor = CreateCursorFromBitmap(Properties.Resources.bucket, new Point(16, 28));
 
             // Initialize unified slider (defaults to brush size)
             UpdateUnifiedSlider();
@@ -693,6 +705,17 @@ namespace Doodle_241439P
                     // Initialize speed tracking for wet brush
                     lastMouseMoveTime = DateTime.Now;
                     lastMousePosition = canvasLocation;
+                    // Start stroke overlay for opacity brushes (max opacity per stroke, paste on release)
+                    if (flagBrush && UseStrokeOverlay() && bm != null)
+                    {
+                        strokeOverlayGraphics?.Dispose();
+                        strokeOverlayBitmap?.Dispose();
+                        strokeOverlayBitmap = new Bitmap(bm.Width, bm.Height);
+                        using (Graphics initG = Graphics.FromImage(strokeOverlayBitmap))
+                            initG.Clear(DrawingColor.Transparent);
+                        strokeOverlayGraphics = Graphics.FromImage(strokeOverlayBitmap);
+                        strokeOverlayGraphics.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                    }
                 }
             }
             else if (flagLine || flagSquare || flagCircle || flagNgon)
@@ -971,17 +994,31 @@ namespace Doodle_241439P
                 Point bitmapStartP = CanvasToBitmap(startP);
                 Point bitmapEndP = CanvasToBitmap(endP);
                 
-                // Set up graphics with clipping to bitmap bounds
-                // This allows drawing to continue tracking outside bounds but only renders visible parts
-                g = Graphics.FromImage(bm);
-                g.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                bool drawingToOverlay = flagBrush && strokeOverlayGraphics != null;
+                
+                if (!drawingToOverlay)
+                {
+                    // Set up graphics with clipping to bitmap bounds
+                    g = Graphics.FromImage(bm);
+                    g.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                }
                 
                 if (flagErase == false)
                 {
                     if (flagBrush == true)
                     {
-                        // Draw using the selected brush type (will be clipped to bounds)
-                        DrawWithBrushType(g, bitmapStartP, bitmapEndP);
+                        // Opacity brushes: draw to overlay (paste on release for max opacity). Others: draw to canvas.
+                        if (strokeOverlayGraphics != null)
+                        {
+                            strokeOverlayGraphics.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                            DrawWithBrushType(strokeOverlayGraphics, bitmapStartP, bitmapEndP, forOverlay: true);
+                            strokeOverlayGraphics.ResetClip();
+                        }
+                        else
+                        {
+                            // Draw using the selected brush type (will be clipped to bounds)
+                            DrawWithBrushType(g, bitmapStartP, bitmapEndP, forOverlay: false);
+                        }
                     }
                 }
                 else
@@ -1001,8 +1038,12 @@ namespace Doodle_241439P
                         g.FillEllipse(eraserBrush, bitmapEndP.X - radius, bitmapEndP.Y - radius, eraserSize, eraserSize);
                     }
                 }
-                g.ResetClip(); // Reset clipping
-                g.Dispose();
+                
+                if (!drawingToOverlay)
+                {
+                    g.ResetClip();
+                    g.Dispose();
+                }
                 // Update speed tracking for all brush types (needed for wet brush)
                 if (flagBrush && flagDraw)
                 {
@@ -1121,6 +1162,34 @@ namespace Doodle_241439P
                 shapeEndPoint = Point.Empty;
                 picBoxMain.Invalidate();
             }
+
+            // Paste stroke overlay onto canvas (opacity brushes: one composite so max opacity is respected)
+            if (strokeOverlayBitmap != null && bm != null)
+            {
+                float opacity = GetBrushStrokeOpacity();
+                using (Graphics pasteG = Graphics.FromImage(bm))
+                {
+                    pasteG.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                    var matrix = new ColorMatrix();
+                    matrix.Matrix33 = opacity;
+                    using (var attrs = new ImageAttributes())
+                    {
+                        attrs.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                        pasteG.DrawImage(strokeOverlayBitmap,
+                            new Rectangle(0, 0, bm.Width, bm.Height),
+                            0, 0, bm.Width, bm.Height,
+                            GraphicsUnit.Pixel,
+                            attrs);
+                    }
+                    pasteG.ResetClip();
+                }
+                strokeOverlayGraphics?.Dispose();
+                strokeOverlayGraphics = null;
+                strokeOverlayBitmap.Dispose();
+                strokeOverlayBitmap = null;
+                picBoxMain.Invalidate();
+            }
+
             flagDraw = false;
             isDraggingText = false;
             isDraggingImage = false;
@@ -1819,7 +1888,7 @@ namespace Doodle_241439P
             flagNgon = false;
             picBoxBrushColor.Image = Properties.Resources.bucket;
             picBoxBrushColor.BackColor = DrawingColor.Transparent;
-            picBoxMain.Cursor = Cursors.Hand; // Hand cursor for fill tool
+            picBoxMain.Cursor = fillCursor ?? Cursors.Hand;
             SetToolBorder(picBoxFill);
             UpdateUnifiedSlider();
             UpdateUnifiedComboBox();
@@ -1940,8 +2009,8 @@ namespace Doodle_241439P
             g.Dispose();
         }
 
-        // Draw with selected brush type
-        private void DrawWithBrushType(Graphics g, Point start, Point end)
+        // Draw with selected brush type. When forOverlay is true, opacity brushes draw at 100% to build the stroke mask (paste uses max opacity).
+        private void DrawWithBrushType(Graphics g, Point start, Point end, bool forOverlay = false)
         {
             g.SmoothingMode = SmoothingMode.HighQuality;
 
@@ -1963,57 +2032,86 @@ namespace Doodle_241439P
                     break;
 
                 case BrushType.Paintbrush:
-                    // Soft, painterly effect using rounded caps, slightly transparent
-                    // Draw to temp bitmap first to prevent opacity accumulation
-                    int paintBrushSize = brushSize;
-                    Rectangle paintBounds = GetStrokeBounds(start, end, paintBrushSize);
-                    using (Bitmap tempBitmap = new Bitmap(paintBounds.Width, paintBounds.Height))
+                    if (forOverlay)
                     {
-                        using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                        // Build stroke mask at 100% (opacity applied when pasting)
+                        int paintBrushSize = brushSize;
+                        using (DrawingPen paintPen = new DrawingPen(brushPen.Color, paintBrushSize))
                         {
-                            tempG.SmoothingMode = SmoothingMode.HighQuality;
-                            tempG.Clear(DrawingColor.Transparent);
-                            using (DrawingPen paintPen = new DrawingPen(brushPen.Color, paintBrushSize))
-                            {
-                                paintPen.StartCap = LineCap.Round;
-                                paintPen.EndCap = LineCap.Round;
-                                paintPen.LineJoin = LineJoin.Round;
-                                // Draw at full opacity to temp bitmap
-                                tempG.DrawLine(paintPen,
-                                    start.X - paintBounds.X, start.Y - paintBounds.Y,
-                                    end.X - paintBounds.X, end.Y - paintBounds.Y);
-                            }
+                            paintPen.StartCap = LineCap.Round;
+                            paintPen.EndCap = LineCap.Round;
+                            paintPen.LineJoin = LineJoin.Round;
+                            g.DrawLine(paintPen, start, end);
                         }
-                        // Composite temp bitmap onto main with desired opacity (70%)
-                        DrawBitmapWithOpacity(g, tempBitmap, paintBounds.Location, 0.7f);
+                        int paintRadius = brushSize / 2;
+                        using (SolidBrush paintBrush = new SolidBrush(brushPen.Color))
+                            g.FillEllipse(paintBrush, end.X - paintRadius, end.Y - paintRadius, brushSize, brushSize);
+                    }
+                    else
+                    {
+                        // Soft, painterly effect using rounded caps, slightly transparent
+                        int paintBrushSize = brushSize;
+                        Rectangle paintBounds = GetStrokeBounds(start, end, paintBrushSize);
+                        using (Bitmap tempBitmap = new Bitmap(paintBounds.Width, paintBounds.Height))
+                        {
+                            using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                            {
+                                tempG.SmoothingMode = SmoothingMode.HighQuality;
+                                tempG.Clear(DrawingColor.Transparent);
+                                using (DrawingPen paintPen = new DrawingPen(brushPen.Color, paintBrushSize))
+                                {
+                                    paintPen.StartCap = LineCap.Round;
+                                    paintPen.EndCap = LineCap.Round;
+                                    paintPen.LineJoin = LineJoin.Round;
+                                    tempG.DrawLine(paintPen,
+                                        start.X - paintBounds.X, start.Y - paintBounds.Y,
+                                        end.X - paintBounds.X, end.Y - paintBounds.Y);
+                                }
+                            }
+                            DrawBitmapWithOpacity(g, tempBitmap, paintBounds.Location, 0.7f);
+                        }
                     }
                     break;
 
-
                 case BrushType.Marker:
-                    // Clean, solid lines with square caps, slightly transparent
-                    // Draw to temp bitmap first to prevent opacity accumulation
-                    int markerBrushSize = brushSize;
-                    Rectangle markerBounds = GetStrokeBounds(start, end, markerBrushSize);
-                    using (Bitmap tempBitmap = new Bitmap(markerBounds.Width, markerBounds.Height))
+                    if (forOverlay)
                     {
-                        using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                        // Build stroke mask at 100% (opacity applied when pasting)
+                        int markerBrushSize = brushSize;
+                        using (DrawingPen markerPen = new DrawingPen(brushPen.Color, markerBrushSize))
                         {
-                            tempG.SmoothingMode = SmoothingMode.HighQuality;
-                            tempG.Clear(DrawingColor.Transparent);
-                            using (DrawingPen markerPen = new DrawingPen(brushPen.Color, markerBrushSize))
-                            {
-                                markerPen.StartCap = LineCap.Square;
-                                markerPen.EndCap = LineCap.Square;
-                                markerPen.LineJoin = LineJoin.Miter;
-                                // Draw at full opacity to temp bitmap
-                                tempG.DrawLine(markerPen,
-                                    start.X - markerBounds.X, start.Y - markerBounds.Y,
-                                    end.X - markerBounds.X, end.Y - markerBounds.Y);
-                            }
+                            markerPen.StartCap = LineCap.Square;
+                            markerPen.EndCap = LineCap.Square;
+                            markerPen.LineJoin = LineJoin.Miter;
+                            g.DrawLine(markerPen, start, end);
                         }
-                        // Composite temp bitmap onto main with desired opacity (80%)
-                        DrawBitmapWithOpacity(g, tempBitmap, markerBounds.Location, 0.8f);
+                        int markerRadius = brushSize / 2;
+                        using (SolidBrush markerBrush = new SolidBrush(brushPen.Color))
+                            g.FillEllipse(markerBrush, end.X - markerRadius, end.Y - markerRadius, brushSize, brushSize);
+                    }
+                    else
+                    {
+                        // Clean, solid lines with square caps, slightly transparent
+                        int markerBrushSize = brushSize;
+                        Rectangle markerBounds = GetStrokeBounds(start, end, markerBrushSize);
+                        using (Bitmap tempBitmap = new Bitmap(markerBounds.Width, markerBounds.Height))
+                        {
+                            using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                            {
+                                tempG.SmoothingMode = SmoothingMode.HighQuality;
+                                tempG.Clear(DrawingColor.Transparent);
+                                using (DrawingPen markerPen = new DrawingPen(brushPen.Color, markerBrushSize))
+                                {
+                                    markerPen.StartCap = LineCap.Square;
+                                    markerPen.EndCap = LineCap.Square;
+                                    markerPen.LineJoin = LineJoin.Miter;
+                                    tempG.DrawLine(markerPen,
+                                        start.X - markerBounds.X, start.Y - markerBounds.Y,
+                                        end.X - markerBounds.X, end.Y - markerBounds.Y);
+                                }
+                            }
+                            DrawBitmapWithOpacity(g, tempBitmap, markerBounds.Location, 0.8f);
+                        }
                     }
                     break;
 
@@ -2057,8 +2155,7 @@ namespace Doodle_241439P
                     break;
 
                 case BrushType.WetBrush:
-                    // Speed-based paint brush - slightly opaque, thickness varies with speed
-                    // Calculate speed based on distance and time from last position
+                    // Speed-based paint brush - thickness varies with speed
                     double distance = 0;
                     double speed = 0;
                     if (lastMousePosition != Point.Empty)
@@ -2069,33 +2166,65 @@ namespace Doodle_241439P
                     }
                     else
                     {
-                        // First point - use distance from start
                         distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
-                        speed = 0; // Default to slow (thick) for first point
+                        speed = 0;
                     }
-
-                    // Faster speed = thinner brush, slower speed = thicker brush
-                    // Speed range: 0-5 pixels/ms, map to brush size variation: 0.6x to 1.4x
-                    // Clamp speed to reasonable range
                     speed = Math.Min(5.0, speed);
                     double speedFactor = Math.Max(0.6, Math.Min(1.4, 1.4 - (speed * 0.16)));
                     int wetBrushSize = (int)(brushSize * speedFactor);
-                    wetBrushSize = Math.Max(1, wetBrushSize); // Ensure minimum size
+                    wetBrushSize = Math.Max(1, wetBrushSize);
 
-                    // Slightly transparent (about 80% opacity)
-                    DrawingColor wetColor = DrawingColor.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
-                    using (DrawingPen wetPen = new DrawingPen(wetColor, wetBrushSize))
-                    using (SolidBrush wetBrush = new SolidBrush(wetColor))
+                    if (forOverlay)
                     {
-                        wetPen.StartCap = LineCap.Round;
-                        wetPen.EndCap = LineCap.Round;
-                        wetPen.LineJoin = LineJoin.Round;
-                        g.DrawLine(wetPen, start, end);
-                        int wetRadius = wetBrushSize / 2;
-                        g.FillEllipse(wetBrush, end.X - wetRadius, end.Y - wetRadius, wetBrushSize, wetBrushSize);
+                        // Build stroke mask at 100% (opacity applied when pasting)
+                        DrawingColor wetColor = brushPen.Color;
+                        using (DrawingPen wetPen = new DrawingPen(wetColor, wetBrushSize))
+                        using (SolidBrush wetBrush = new SolidBrush(wetColor))
+                        {
+                            wetPen.StartCap = LineCap.Round;
+                            wetPen.EndCap = LineCap.Round;
+                            wetPen.LineJoin = LineJoin.Round;
+                            g.DrawLine(wetPen, start, end);
+                            int wetRadius = wetBrushSize / 2;
+                            g.FillEllipse(wetBrush, end.X - wetRadius, end.Y - wetRadius, wetBrushSize, wetBrushSize);
+                        }
+                    }
+                    else
+                    {
+                        DrawingColor wetColor = DrawingColor.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
+                        using (DrawingPen wetPen = new DrawingPen(wetColor, wetBrushSize))
+                        using (SolidBrush wetBrush = new SolidBrush(wetColor))
+                        {
+                            wetPen.StartCap = LineCap.Round;
+                            wetPen.EndCap = LineCap.Round;
+                            wetPen.LineJoin = LineJoin.Round;
+                            g.DrawLine(wetPen, start, end);
+                            int wetRadius = wetBrushSize / 2;
+                            g.FillEllipse(wetBrush, end.X - wetRadius, end.Y - wetRadius, wetBrushSize, wetBrushSize);
+                        }
                     }
                     break;
             }
+        }
+
+        // Whether current brush uses stroke overlay (max opacity per stroke, paste on release)
+        private bool UseStrokeOverlay()
+        {
+            return currentBrushType == BrushType.Paintbrush ||
+                   currentBrushType == BrushType.Marker ||
+                   currentBrushType == BrushType.WetBrush;
+        }
+
+        // Max opacity when pasting the stroke overlay (so overlapping segments don't exceed this)
+        private float GetBrushStrokeOpacity()
+        {
+            return currentBrushType switch
+            {
+                BrushType.Paintbrush => 0.7f,
+                BrushType.Marker => 0.8f,
+                BrushType.WetBrush => 0.8f,
+                _ => 1f
+            };
         }
 
         // Helper method to calculate bounding rectangle for a stroke
@@ -2548,6 +2677,19 @@ namespace Doodle_241439P
                 {
                     e.Graphics.DrawImage(bm, canvasOffsetX, canvasOffsetY);
                 }
+                // Draw stroke overlay (opacity brushes) on top so user sees stroke at max opacity while drawing
+                if (strokeOverlayBitmap != null)
+                {
+                    float opacity = GetBrushStrokeOpacity();
+                    var matrix = new ColorMatrix();
+                    matrix.Matrix33 = opacity;
+                    using (var attrs = new ImageAttributes())
+                    {
+                        attrs.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                        var destRect = new Rectangle(canvasOffsetX, canvasOffsetY, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height);
+                        e.Graphics.DrawImage(strokeOverlayBitmap, destRect, 0, 0, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height, GraphicsUnit.Pixel, attrs);
+                    }
+                }
             }
             // When not zoomed, check if we need to draw manually
             else if (canvasOffsetX != 0 || canvasOffsetY != 0 || viewportOffsetX != 0 || viewportOffsetY != 0)
@@ -2557,8 +2699,35 @@ namespace Doodle_241439P
                 {
                     e.Graphics.DrawImage(bm, canvasOffsetX, canvasOffsetY);
                 }
+                if (strokeOverlayBitmap != null)
+                {
+                    float opacity = GetBrushStrokeOpacity();
+                    var matrix = new ColorMatrix();
+                    matrix.Matrix33 = opacity;
+                    using (var attrs = new ImageAttributes())
+                    {
+                        attrs.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                        var destRect = new Rectangle(canvasOffsetX, canvasOffsetY, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height);
+                        e.Graphics.DrawImage(strokeOverlayBitmap, destRect, 0, 0, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height, GraphicsUnit.Pixel, attrs);
+                    }
+                }
             }
             // When no zoom and no offsets, Image property handles drawing automatically
+            else if (strokeOverlayBitmap != null && bm != null)
+            {
+                // Still need to draw overlay when picBoxMain.Image is bm (no manual draw path)
+                e.Graphics.TranslateTransform(canvasOffsetX, canvasOffsetY);
+                float opacity = GetBrushStrokeOpacity();
+                var matrix = new ColorMatrix();
+                matrix.Matrix33 = opacity;
+                using (var attrs = new ImageAttributes())
+                {
+                    attrs.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                    var destRect = new Rectangle(0, 0, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height);
+                    e.Graphics.DrawImage(strokeOverlayBitmap, destRect, 0, 0, strokeOverlayBitmap.Width, strokeOverlayBitmap.Height, GraphicsUnit.Pixel, attrs);
+                }
+                e.Graphics.TranslateTransform(-canvasOffsetX, -canvasOffsetY);
+            }
 
             // Draw all placed images as temporary overlay (not yet stamped to bitmap)
             // MUST be drawn before restoring graphics state so they're in canvas coordinates
@@ -2865,8 +3034,13 @@ namespace Doodle_241439P
         // Create a bitmap from emoji text with COLORED emoji support
         // Uses WPF interop with Emoji.Wpf library to render colored emojis
         // Solution based on: https://stackoverflow.com/questions/49721440/display-colored-emoji-instead-of-black-and-white
+        // Caches by (emoji, size) so repeated placements reuse the rendered bitmap.
         private Bitmap CreateEmojiBitmap(string emoji, int size)
         {
+            var key = (emoji, size);
+            if (emojiBitmapCache.TryGetValue(key, out Bitmap? cached))
+                return (Bitmap)cached.Clone();
+
             // First, measure the text to determine bitmap size
             Font emojiFont = new Font("Segoe UI Emoji", size * 0.7f, FontStyle.Regular, GraphicsUnit.Pixel);
             SizeF textSize;
@@ -2938,6 +3112,7 @@ namespace Doodle_241439P
                 bmp.MakeTransparent(DrawingColor.White);
 
                 emojiFont.Dispose();
+                emojiBitmapCache[key] = bmp;
                 return bmp;
             }
             catch (Exception ex)
@@ -2956,6 +3131,7 @@ namespace Doodle_241439P
                     g.DrawString(emoji, emojiFont, System.Drawing.Brushes.Black, x, y);
                 }
                 emojiFont.Dispose();
+                emojiBitmapCache[key] = bmp;
                 return bmp;
             }
         }
@@ -2969,36 +3145,12 @@ namespace Doodle_241439P
                 AutoStampOnToolSwitch();
             }
 
-            // If emojiText is already set and we're switching back to emoji mode,
-            // just re-enable emoji mode without showing the dialog
-            if (!string.IsNullOrEmpty(emojiText) && !flagEmoji)
-            {
-                // Re-enable emoji mode with existing emoji
-                flagEmoji = true;
-                flagLoad = false;
-                flagFill = false;
-                flagBrush = false;
-                flagErase = false;
-                flagText = false;
-                flagLine = false;
-                flagSquare = false;
-                flagCircle = false;
-                flagNgon = false;
-                picBoxBrushColor.Image = Properties.Resources.happy_face;
-                picBoxBrushColor.BackColor = DrawingColor.Transparent;
-                picBoxMain.Cursor = Cursors.Default;
-                SetToolBorder(picBoxEmoji);
-                UpdateUnifiedSlider();
-                UpdateUnifiedComboBox();
-                return;
-            }
-
             // If already in emoji mode, show dialog to allow changing emoji
             // Otherwise, prompt user to enter emoji (first time or empty emojiText)
             using (Form emojiInputForm = new Form())
             {
                 emojiInputForm.Text = "Enter Emoji";
-                emojiInputForm.Size = new Size(400, 220);
+                emojiInputForm.Size = new Size(420, 280);
                 emojiInputForm.StartPosition = FormStartPosition.CenterParent;
                 emojiInputForm.FormBorderStyle = FormBorderStyle.FixedDialog;
                 emojiInputForm.MaximizeBox = false;
@@ -3007,8 +3159,21 @@ namespace Doodle_241439P
                 emojiInputForm.TopMost = true; // Show above TopMost main form
                 emojiInputForm.Owner = this; // Set owner to ensure proper z-order
 
+                System.Windows.Forms.Label lblPrompt = new System.Windows.Forms.Label();
+                lblPrompt.Text = "Type in emoji";
+                lblPrompt.Location = new Point(30, 12);
+                lblPrompt.AutoSize = true;
+                lblPrompt.Font = new Font(lblPrompt.Font.FontFamily, 10);
+
+                System.Windows.Forms.Label lblShortcut = new System.Windows.Forms.Label();
+                lblShortcut.Text = "Tip: Win + . opens the Windows emoji picker";
+                lblShortcut.Location = new Point(30, 125);
+                lblShortcut.AutoSize = true;
+                lblShortcut.Font = new Font(lblShortcut.Font.FontFamily, 8);
+                lblShortcut.ForeColor = System.Drawing.Color.Gray;
+
                 System.Windows.Forms.TextBox inputBox = new System.Windows.Forms.TextBox();
-                inputBox.Location = new Point(30, 30);
+                inputBox.Location = new Point(30, 38);
                 inputBox.Size = new Size(340, 80);
                 inputBox.Multiline = true;
                 inputBox.Text = emojiText;
@@ -3019,15 +3184,17 @@ namespace Doodle_241439P
                 System.Windows.Forms.Button okButton = new System.Windows.Forms.Button();
                 okButton.Text = "OK";
                 okButton.DialogResult = DialogResult.OK;
-                okButton.Location = new Point(120, 130);
+                okButton.Location = new Point(120, 165);
                 okButton.Size = new Size(100, 35);
 
                 System.Windows.Forms.Button cancelButton = new System.Windows.Forms.Button();
                 cancelButton.Text = "Cancel";
                 cancelButton.DialogResult = DialogResult.Cancel;
-                cancelButton.Location = new Point(230, 130);
+                cancelButton.Location = new Point(230, 165);
                 cancelButton.Size = new Size(100, 35);
 
+                emojiInputForm.Controls.Add(lblPrompt);
+                emojiInputForm.Controls.Add(lblShortcut);
                 emojiInputForm.Controls.Add(inputBox);
                 emojiInputForm.Controls.Add(okButton);
                 emojiInputForm.Controls.Add(cancelButton);

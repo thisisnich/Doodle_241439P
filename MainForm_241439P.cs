@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using Doodle_241439P.Properties;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -70,6 +71,26 @@ namespace Doodle_241439P
         Rectangle textBounds = Rectangle.Empty;
         Point previewMousePos = new Point(-1, -1);
         float imageScale = 1.0f;  // Scale factor for selected image (1.0 = 100%)
+        float zoomLevel = 1.0f;  // Zoom level for canvas (1.0 = 100%)
+        Point zoomCenter = Point.Empty;  // Center point for zooming
+        int canvasOffsetX = 0;  // Offset for expanded canvas (negative values allow drawing to the left)
+        int canvasOffsetY = 0;  // Offset for expanded canvas (negative values allow drawing above)
+        int canvasActualWidth = 0;  // Actual width of canvas (may be larger than picBoxMain)
+        int canvasActualHeight = 0;  // Actual height of canvas (may be larger than picBoxMain)
+        int viewportOffsetX = 0;  // Viewport pan offset (how much we've scrolled the view)
+        int viewportOffsetY = 0;  // Viewport pan offset (how much we've scrolled the view)
+        bool isPanning = false;  // Whether user is panning the viewport
+        Point panStartPoint = Point.Empty;  // Starting point for panning
+        int panStartOffsetX = 0;  // Viewport offset when panning started
+        int panStartOffsetY = 0;  // Viewport offset when panning started
+        bool isResizingCanvas = false;  // Whether user is dragging to resize canvas
+        int canvasResizeEdge = 0;  // Which edge is being resized: 0=none, 1=left, 2=right, 3=top, 4=bottom, 5=top-left, 6=top-right, 7=bottom-left, 8=bottom-right
+        Point canvasResizeStart = Point.Empty;  // Starting point for canvas resize
+        int canvasResizeStartWidth = 0;  // Canvas width when resize started
+        int canvasResizeStartHeight = 0;  // Canvas height when resize started
+        int canvasResizeStartOffsetX = 0;  // Canvas offset X when resize started
+        int canvasResizeStartOffsetY = 0;  // Canvas offset Y when resize started
+        const int RESIZE_HANDLE_SIZE = 8;  // Size of resize handles in pixels
         Cursor? brushCursor = null;
         Cursor? eraserCursor = null;
 
@@ -83,6 +104,8 @@ namespace Doodle_241439P
         bool isDrawingShape = false;  // Flag for shape drawing in progress
         Point shapeStartPoint = Point.Empty;  // Start point for shape drawing
         Point shapeEndPoint = Point.Empty;  // End point for shape drawing
+        DrawingColor shapeBorderColor = DrawingColor.Black;  // Outside color (border) for shapes
+        DrawingColor shapeFillColor = DrawingColor.Black;  // Inside color (fill) for shapes
 
         // Undo functionality
         private Stack<Bitmap> undoStack = new Stack<Bitmap>();
@@ -127,7 +150,7 @@ namespace Doodle_241439P
             }
             else
             {
-                MessageBox.Show("No image or canvas content to filter.", "Image Filters", 
+                MessageBox.Show("No image or canvas content to filter.", "Image Filters",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -204,6 +227,89 @@ namespace Doodle_241439P
             picBoxMain.Invalidate();
         }
 
+        // Windows message constants for mouse wheel
+        private const int WM_MOUSEHWHEEL = 0x020E;
+        private const int WM_MOUSEWHEEL = 0x020A;
+        
+        // Override WndProc to handle horizontal mouse wheel (two-finger horizontal scrolling)
+        // and to route vertical wheel to canvas when cursor is over it (so scroll works when canvas doesn't have focus)
+        protected override void WndProc(ref Message m)
+        {
+            // Route vertical mouse wheel to canvas when cursor is over picture box, so scrolling works when zoomed in
+            // even if another control has focus (e.g. after clicking a tool)
+            if (m.Msg == WM_MOUSEWHEEL && picBoxMain != null)
+            {
+                Point clientPos = PointToClient(Cursor.Position);
+                if (picBoxMain.Visible && picBoxMain.Bounds.Contains(clientPos))
+                {
+                    int delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);
+                    bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
+                    bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+                    if (ctrlPressed)
+                    {
+                        // Zoom: let base deliver to focused control; we handle in picBoxMain_MouseWheel when pic has focus
+                        // If we're routing, invoke the same zoom/scroll logic here
+                        float zoomFactor = delta > 0 ? 1.1f : 0.9f;
+                        float newZoom = zoomLevel * zoomFactor;
+                        if (newZoom < 0.1f) newZoom = 0.1f;
+                        if (newZoom > 5.0f) newZoom = 5.0f;
+                        if (newZoom != zoomLevel)
+                        {
+                            zoomLevel = newZoom;
+                            if (zoomLevel == 1.0f && canvasOffsetX == 0 && canvasOffsetY == 0 && viewportOffsetX == 0 && viewportOffsetY == 0 && bm != null)
+                                picBoxMain.Image = bm;
+                            else
+                                picBoxMain.Image = null;
+                            UpdateScrollBars();
+                            picBoxMain.Invalidate();
+                        }
+                        m.Result = IntPtr.Zero;
+                        return;
+                    }
+                    int scrollDelta = -delta;
+                    if (shiftPressed)
+                        viewportOffsetX += scrollDelta / 3;
+                    else
+                        viewportOffsetY -= scrollDelta / 3; // Flipped: wheel up = pan up, wheel down = pan down
+                    ClampViewportOffset();
+                    UpdateScrollBars();
+                    picBoxMain.Invalidate();
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+            }
+            
+            if (m.Msg == WM_MOUSEHWHEEL)
+            {
+                // Handle horizontal scrolling from two-finger touchpad gestures
+                int delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);
+                
+                // Check if Ctrl is pressed (for zoom)
+                bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
+                
+                if (!ctrlPressed)
+                {
+                    // Two-finger horizontal scrolling (inverse/natural scrolling)
+                    // delta > 0 means scroll right (two fingers right), so viewport moves right, content moves left
+                    // We invert for natural scrolling: two fingers right = scroll left
+                    int scrollDelta = -delta;
+                    viewportOffsetX += scrollDelta / 3; // Divide by 3 for smoother scrolling
+                    
+                    // Clamp and update scrollbars
+                    ClampViewportOffset();
+                    UpdateScrollBars();
+                    
+                    // Redraw with new viewport position
+                    picBoxMain.Invalidate();
+                    
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+            }
+            
+            base.WndProc(ref m);
+        }
+
         // Override keyboard handler to intercept Ctrl+Z
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -218,6 +324,10 @@ namespace Doodle_241439P
         private void MainForm_241439P_Load(object sender, EventArgs e)
         {
             bm = new Bitmap(picBoxMain.Width, picBoxMain.Height);
+            canvasActualWidth = picBoxMain.Width;
+            canvasActualHeight = picBoxMain.Height;
+            canvasOffsetX = 0;
+            canvasOffsetY = 0;
 
             // Fill with initial background color
             using (Graphics g = Graphics.FromImage(bm))
@@ -226,6 +336,9 @@ namespace Doodle_241439P
             }
 
             picBoxMain.Image = bm;
+            
+            // Initialize scrollbars
+            UpdateScrollBars();
 
             // Initialize font and size
             selectedFontName = "Arial";
@@ -247,6 +360,12 @@ namespace Doodle_241439P
             lblNgonSides.Text = "Sides: 5";
             checkBoxShapeFilled.Checked = false;
             shapeFilled = false;
+
+            // Initialize shape colors
+            shapeBorderColor = DrawingColor.Black;
+            shapeFillColor = DrawingColor.Black;
+            picBoxShapeOutsideColor.BackColor = shapeBorderColor;
+            picBoxShapeInsideColor.BackColor = shapeFillColor;
 
             // Initialize brush type
             currentBrushType = BrushType.Pen;
@@ -283,6 +402,113 @@ namespace Doodle_241439P
 
             // Setup tooltips for all tools
             SetupTooltips();
+        }
+
+        private void MainForm_241439P_Resize(object sender, EventArgs e)
+        {
+            // Only resize if the form is loaded and bitmap is initialized
+            if (bm == null || !IsHandleCreated || WindowState == FormWindowState.Minimized) return;
+
+            // Calculate the bottom of the toolbar area
+            // Find the lowest Y position + height of all toolbar controls
+            int toolbarBottom = menuStrip1.Bottom;
+
+            // Check all toolbar controls to find the bottommost one
+            foreach (System.Windows.Forms.Control control in Controls)
+            {
+                if (control != picBoxMain && control != menuStrip1 && control.Visible)
+                {
+                    int controlBottom = control.Bottom;
+                    if (controlBottom > toolbarBottom)
+                    {
+                        toolbarBottom = controlBottom;
+                    }
+                }
+            }
+
+            // Add some padding below the toolbars
+            int drawingAreaTop = toolbarBottom + 10;
+
+            // Calculate available space for the drawing area
+            int margin = picBoxMain.Left; // Maintain left margin (11px)
+            int scrollbarWidth = vScrollBarCanvas.Visible ? vScrollBarCanvas.Width : 0;
+            int scrollbarHeight = hScrollBarCanvas.Visible ? hScrollBarCanvas.Height : 0;
+            int availableWidth = ClientSize.Width - (margin * 2) - scrollbarWidth;
+            int availableHeight = ClientSize.Height - drawingAreaTop - 10 - scrollbarHeight; // 10px bottom margin
+
+            // Ensure minimum size
+            if (availableWidth < 100) availableWidth = 100;
+            if (availableHeight < 100) availableHeight = 100;
+
+            // Only resize if the size actually changed
+            if (picBoxMain.Width != availableWidth || picBoxMain.Height != availableHeight || picBoxMain.Top != drawingAreaTop)
+            {
+                // Save the current bitmap content
+                Bitmap oldBitmap = bm;
+
+                // Create new bitmap with new size
+                Bitmap newBitmap = new Bitmap(availableWidth, availableHeight);
+
+                // Fill with background color
+                using (Graphics g = Graphics.FromImage(newBitmap))
+                {
+                    g.Clear(DrawingColor.LightGray);
+
+                    // Draw the old bitmap onto the new one
+                    if (oldBitmap != null)
+                    {
+                        // Only scale down if the new size is smaller, otherwise just draw at original size
+                        if (availableWidth < oldBitmap.Width || availableHeight < oldBitmap.Height)
+                        {
+                            // Window got smaller - scale down the drawing
+                            // Use high-quality scaling for better image quality
+                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                            g.SmoothingMode = SmoothingMode.HighQuality;
+                            g.CompositingQuality = CompositingQuality.HighQuality;
+
+                            // Scale down to fit the new smaller dimensions
+                            g.DrawImage(oldBitmap, 0, 0, availableWidth, availableHeight);
+                        }
+                        else
+                        {
+                            // Window got larger - keep drawing at original size, just expand canvas
+                            int drawWidth = Math.Min(oldBitmap.Width, availableWidth);
+                            int drawHeight = Math.Min(oldBitmap.Height, availableHeight);
+                            g.DrawImage(oldBitmap, 0, 0, drawWidth, drawHeight);
+                        }
+                    }
+                }
+
+                // Update the bitmap and PictureBox
+                bm = newBitmap;
+                picBoxMain.Size = new Size(availableWidth, availableHeight);
+                picBoxMain.Location = new Point(margin, drawingAreaTop);
+                
+                // Update canvas tracking (resize doesn't change offset, just size)
+                canvasActualWidth = availableWidth;
+                canvasActualHeight = availableHeight;
+                
+                // Update Image property if no offset and not zoomed
+                if (zoomLevel == 1.0f && canvasOffsetX == 0 && canvasOffsetY == 0 && 
+                    viewportOffsetX == 0 && viewportOffsetY == 0)
+                {
+                    picBoxMain.Image = bm;
+                }
+                else
+                {
+                    picBoxMain.Image = null; // Draw manually in Paint
+                }
+
+                // Dispose old bitmap
+                oldBitmap?.Dispose();
+                
+                // Update scrollbars after resize
+                UpdateScrollBars();
+
+                // Invalidate to redraw
+                picBoxMain.Invalidate();
+            }
         }
 
         // Setup tooltips for all tools
@@ -392,11 +618,42 @@ namespace Doodle_241439P
 
         private void picBoxMain_MouseDown(object sender, MouseEventArgs e)
         {
-            startP = e.Location;
+            // Check for panning: Middle mouse button or Space + Left mouse button
+            bool spacePressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Space) == Keys.Space;
+            if (e.Button == MouseButtons.Middle || (e.Button == MouseButtons.Left && spacePressed))
+            {
+                isPanning = true;
+                panStartPoint = e.Location;
+                panStartOffsetX = viewportOffsetX;
+                panStartOffsetY = viewportOffsetY;
+                picBoxMain.Cursor = Cursors.Hand;
+                return; // Don't process other tools when panning
+            }
+            
+            // Check if clicking on canvas resize handle (only when zoomed out)
+            if (zoomLevel < 1.0f && e.Button == MouseButtons.Left)
+            {
+                int handle = GetCanvasResizeHandle(e.Location);
+                if (handle > 0)
+                {
+                    isResizingCanvas = true;
+                    canvasResizeEdge = handle;
+                    canvasResizeStart = e.Location;
+                    canvasResizeStartWidth = canvasActualWidth;
+                    canvasResizeStartHeight = canvasActualHeight;
+                    canvasResizeStartOffsetX = canvasOffsetX;
+                    canvasResizeStartOffsetY = canvasOffsetY;
+                    return; // Don't process other tools when resizing canvas
+                }
+            }
+            
+            // Convert screen coordinates to canvas coordinates accounting for zoom
+            Point canvasLocation = ScreenToCanvas(e.Location);
+            startP = canvasLocation;
 
             if (flagText)
             {
-                if (textBounds != Rectangle.Empty && textBounds.Contains(e.Location))
+                if (textBounds != Rectangle.Empty && textBounds.Contains(canvasLocation))
                 {
                     // Start dragging existing text
                     isDraggingText = true;
@@ -409,7 +666,7 @@ namespace Doodle_241439P
                         strText = "Doodle Painting";
 
                     SaveUndoState();  // Save state before placing text
-                    textPosition = e.Location;
+                    textPosition = canvasLocation;
                     DrawTextOnCanvas();
                     picBoxMain.Invalidate();
 
@@ -422,7 +679,7 @@ namespace Doodle_241439P
                 if (e.Button == MouseButtons.Left)
                 {
                     SaveUndoState();  // Save state before filling
-                    PerformFloodFill(e.Location);
+                    PerformFloodFill(canvasLocation);
                     picBoxMain.Invalidate();
                 }
             }
@@ -432,10 +689,10 @@ namespace Doodle_241439P
                 {
                     SaveUndoState();  // Save state before drawing/erasing
                     flagDraw = true;
-                    endP = e.Location; // Initialize endP for continuous drawing
+                    endP = canvasLocation; // Initialize endP for continuous drawing
                     // Initialize speed tracking for wet brush
                     lastMouseMoveTime = DateTime.Now;
-                    lastMousePosition = e.Location;
+                    lastMousePosition = canvasLocation;
                 }
             }
             else if (flagLine || flagSquare || flagCircle || flagNgon)
@@ -444,8 +701,8 @@ namespace Doodle_241439P
                 {
                     SaveUndoState();  // Save state before drawing shape
                     isDrawingShape = true;
-                    shapeStartPoint = e.Location;
-                    shapeEndPoint = e.Location;
+                    shapeStartPoint = canvasLocation;
+                    shapeEndPoint = canvasLocation;
                 }
             }
             else if (flagLoad || flagEmoji)
@@ -453,21 +710,21 @@ namespace Doodle_241439P
                 if (e.Button == MouseButtons.Left)
                 {
                     // Check if clicking on an existing image/emoji
-                    PlacedImage? clickedImage = GetImageAtPoint(e.Location);
+                    PlacedImage? clickedImage = GetImageAtPoint(canvasLocation);
 
                     if (clickedImage != null)
                     {
                         // Clicking on an existing image/emoji
                         Rectangle bounds = GetScaledBounds(clickedImage);
-                        if (bounds.Contains(e.Location))
+                        if (bounds.Contains(canvasLocation))
                         {
                             // Clicking on the image - select it and start dragging
                             selectedImage = clickedImage;
                             isDraggingImage = true;
                             // Calculate offset from click position to the visual (scaled) bounds
                             // This ensures dragging works correctly regardless of scale
-                            dragOffset = new Point(e.Location.X - bounds.X,
-                                                   e.Location.Y - bounds.Y);
+                            dragOffset = new Point(canvasLocation.X - bounds.X,
+                                                   canvasLocation.Y - bounds.Y);
                             ShowImageControls(true);
                             UpdateUnifiedSlider(); // Update slider when image is selected
                             picBoxMain.Invalidate();
@@ -485,7 +742,7 @@ namespace Doodle_241439P
                             }
 
                             // Place new image at click position
-                            PlaceNewImage(loadedImage, e.Location);
+                            PlaceNewImage(loadedImage, canvasLocation);
                             selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed image
                             imageScale = 1.0f; // Reset scale
                             ShowImageControls(true);
@@ -493,6 +750,18 @@ namespace Doodle_241439P
                         }
                         else if (flagEmoji && !string.IsNullOrEmpty(emojiText))
                         {
+                            // Check if there's a selected image and if click is outside its bounding box
+                            if (selectedImage != null)
+                            {
+                                Rectangle bounds = GetScaledBounds(selectedImage);
+                                if (!bounds.Contains(canvasLocation))
+                                {
+                                    // Clicking outside the bounding box - stamp the selected emoji
+                                    StampImage(selectedImage);
+                                    return; // Don't place a new emoji after stamping
+                                }
+                            }
+
                             // For emoji mode, only allow one emoji at a time
                             // Remove any existing emojis first
                             if (placedImages.Count > 0)
@@ -514,7 +783,7 @@ namespace Doodle_241439P
 
                             // Convert emoji to bitmap and place it
                             Bitmap emojiBitmap = CreateEmojiBitmap(emojiText, selectedFontSize * 2);
-                            PlaceNewImage(emojiBitmap, e.Location);
+                            PlaceNewImage(emojiBitmap, canvasLocation);
                             selectedImage = placedImages[placedImages.Count - 1]; // Select the newly placed emoji
                             imageScale = 1.0f; // Reset scale
                             ShowImageControls(true);
@@ -522,13 +791,22 @@ namespace Doodle_241439P
                         }
                         else
                         {
-                            // No image/emoji to place, just deselect
+                            // No image/emoji to place
                             if (selectedImage != null)
                             {
-                                selectedImage = null;
-                                ShowImageControls(false);
-                                UpdateUnifiedSlider();
-                                picBoxMain.Invalidate();
+                                // In emoji mode, clicking outside the drag box should stamp the image
+                                if (flagEmoji)
+                                {
+                                    StampImage(selectedImage);
+                                }
+                                else
+                                {
+                                    // Just deselect for other modes
+                                    selectedImage = null;
+                                    ShowImageControls(false);
+                                    UpdateUnifiedSlider();
+                                    picBoxMain.Invalidate();
+                                }
                             }
                         }
                     }
@@ -538,13 +816,121 @@ namespace Doodle_241439P
 
         private void picBoxMain_MouseMove(object sender, MouseEventArgs e)
         {
+            // Handle viewport panning
+            if (isPanning)
+            {
+                int deltaX = e.Location.X - panStartPoint.X;
+                int deltaY = e.Location.Y - panStartPoint.Y;
+                
+                viewportOffsetX = panStartOffsetX + deltaX;
+                viewportOffsetY = panStartOffsetY + deltaY;
+                
+                // Clamp and update scrollbars
+                ClampViewportOffset();
+                UpdateScrollBars();
+                
+                picBoxMain.Invalidate();
+                return;
+            }
+            
+            // Handle canvas resizing
+            if (isResizingCanvas)
+            {
+                int deltaX = e.Location.X - canvasResizeStart.X;
+                int deltaY = e.Location.Y - canvasResizeStart.Y;
+                
+                // Convert screen delta to canvas delta
+                int canvasDeltaX = (int)(deltaX / zoomLevel);
+                int canvasDeltaY = (int)(deltaY / zoomLevel);
+                
+                int newWidth = canvasResizeStartWidth;
+                int newHeight = canvasResizeStartHeight;
+                int newOffsetX = canvasResizeStartOffsetX;
+                int newOffsetY = canvasResizeStartOffsetY;
+                
+                // Adjust based on which edge is being dragged
+                switch (canvasResizeEdge)
+                {
+                    case 1: // Left edge
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        break;
+                    case 2: // Right edge
+                        newWidth += canvasDeltaX;
+                        break;
+                    case 3: // Top edge
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 4: // Bottom edge
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 5: // Top-left corner
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 6: // Top-right corner
+                        newWidth += canvasDeltaX;
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 7: // Bottom-left corner
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 8: // Bottom-right corner
+                        newWidth += canvasDeltaX;
+                        newHeight += canvasDeltaY;
+                        break;
+                }
+                
+                // Ensure minimum size
+                if (newWidth < 100) newWidth = 100;
+                if (newHeight < 100) newHeight = 100;
+                
+                // Update canvas (temporarily, will be finalized in MouseUp)
+                ResizeCanvas(newWidth, newHeight, newOffsetX, newOffsetY, false);
+                picBoxMain.Invalidate();
+                return;
+            }
+            
+            // Update cursor when hovering over resize handles
+            if (zoomLevel < 1.0f)
+            {
+                int handle = GetCanvasResizeHandle(e.Location);
+                if (handle > 0)
+                {
+                    // Set appropriate cursor based on handle
+                    Cursor cursor = Cursors.Default;
+                    switch (handle)
+                    {
+                        case 1: case 2: cursor = Cursors.SizeWE; break;
+                        case 3: case 4: cursor = Cursors.SizeNS; break;
+                        case 5: case 8: cursor = Cursors.SizeNWSE; break;
+                        case 6: case 7: cursor = Cursors.SizeNESW; break;
+                    }
+                    picBoxMain.Cursor = cursor;
+                    return;
+                }
+                else
+                {
+                    picBoxMain.Cursor = Cursors.Default;
+                }
+            }
+            
+            // Convert screen coordinates to canvas coordinates accounting for zoom
+            Point canvasLocation = ScreenToCanvas(e.Location);
+            
             if ((flagLoad || flagEmoji) && isDraggingImage && selectedImage != null)
             {
                 // Calculate new visual position based on mouse location and drag offset
                 // Allow dragging outside canvas bounds - no edge snapping
-                int newVisualX = e.Location.X - dragOffset.X;
-                int newVisualY = e.Location.Y - dragOffset.Y;
-                
+                int newVisualX = canvasLocation.X - dragOffset.X;
+                int newVisualY = canvasLocation.Y - dragOffset.Y;
+
                 // Convert visual position back to actual bounds position
                 // If image is scaled, we need to account for the centering offset
                 int actualX, actualY;
@@ -562,7 +948,7 @@ namespace Doodle_241439P
                     actualX = newVisualX;
                     actualY = newVisualY;
                 }
-                
+
                 selectedImage.Bounds = new Rectangle(actualX, actualY, selectedImage.Bounds.Width, selectedImage.Bounds.Height);
 
                 // Redraw all placed images (preserves stamped content and other drawings)
@@ -572,20 +958,30 @@ namespace Doodle_241439P
             else if (flagText && isDraggingText)
             {
                 // Drag text to new position
-                textPosition = e.Location;
+                textPosition = canvasLocation;
                 DrawTextOnCanvas();
                 picBoxMain.Invalidate();
             }
             else if (flagDraw == true && (flagBrush == true || flagErase == true))
             {
-                endP = e.Location;
+                // Always update endP to track pen position (even outside bounds)
+                endP = canvasLocation;
+                
+                // Convert to bitmap coordinates
+                Point bitmapStartP = CanvasToBitmap(startP);
+                Point bitmapEndP = CanvasToBitmap(endP);
+                
+                // Set up graphics with clipping to bitmap bounds
+                // This allows drawing to continue tracking outside bounds but only renders visible parts
                 g = Graphics.FromImage(bm);
+                g.SetClip(new Rectangle(0, 0, bm.Width, bm.Height));
+                
                 if (flagErase == false)
                 {
                     if (flagBrush == true)
                     {
-                        // Draw using the selected brush type
-                        DrawWithBrushType(g, startP, endP);
+                        // Draw using the selected brush type (will be clipped to bounds)
+                        DrawWithBrushType(g, bitmapStartP, bitmapEndP);
                     }
                 }
                 else
@@ -596,15 +992,16 @@ namespace Doodle_241439P
                     eraserPen.StartCap = System.Drawing.Drawing2D.LineCap.Round;
                     eraserPen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
                     eraserPen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
-                    // Draw line to connect points smoothly
-                    g.DrawLine(eraserPen, startP, endP);
-                    // Fill ellipse at end point for complete coverage
+                    // Draw line to connect points smoothly (will be clipped to bounds)
+                    g.DrawLine(eraserPen, bitmapStartP, bitmapEndP);
+                    // Fill ellipse at end point for complete coverage (will be clipped to bounds)
                     int radius = eraserSize / 2;
                     using (SolidBrush eraserBrush = new SolidBrush(picBoxMain.BackColor))
                     {
-                        g.FillEllipse(eraserBrush, endP.X - radius, endP.Y - radius, eraserSize, eraserSize);
+                        g.FillEllipse(eraserBrush, bitmapEndP.X - radius, bitmapEndP.Y - radius, eraserSize, eraserSize);
                     }
                 }
+                g.ResetClip(); // Reset clipping
                 g.Dispose();
                 // Update speed tracking for all brush types (needed for wet brush)
                 if (flagBrush && flagDraw)
@@ -616,30 +1013,108 @@ namespace Doodle_241439P
             }
             else if (flagText && !isDraggingText)
             {
-                // Update preview position when hovering in text mode
-                previewMousePos = e.Location;
+                // Update preview position when hovering in text mode (use canvas coordinates)
+                previewMousePos = canvasLocation;
                 picBoxMain.Invalidate();
             }
             else if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
             {
                 // Update shape preview while dragging
-                shapeEndPoint = e.Location;
+                shapeEndPoint = canvasLocation;
                 picBoxMain.Invalidate(); // Trigger Paint event to show preview
             }
             else if (flagLoad || flagEmoji)
             {
                 // Update cursor when hovering over images/resize handles
-                UpdateCursorForImageMode(e.Location);
+                UpdateCursorForImageMode(canvasLocation);
             }
             startP = endP;
         }
 
         private void picBoxMain_MouseUp(object sender, MouseEventArgs e)
         {
+            // Finalize viewport panning
+            if (isPanning)
+            {
+                isPanning = false;
+                picBoxMain.Cursor = Cursors.Default;
+                return;
+            }
+            
+            // Finalize canvas resize
+            if (isResizingCanvas)
+            {
+                int deltaX = e.Location.X - canvasResizeStart.X;
+                int deltaY = e.Location.Y - canvasResizeStart.Y;
+                
+                // Convert screen delta to canvas delta
+                int canvasDeltaX = (int)(deltaX / zoomLevel);
+                int canvasDeltaY = (int)(deltaY / zoomLevel);
+                
+                int newWidth = canvasResizeStartWidth;
+                int newHeight = canvasResizeStartHeight;
+                int newOffsetX = canvasResizeStartOffsetX;
+                int newOffsetY = canvasResizeStartOffsetY;
+                
+                // Adjust based on which edge is being dragged
+                switch (canvasResizeEdge)
+                {
+                    case 1: // Left edge
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        break;
+                    case 2: // Right edge
+                        newWidth += canvasDeltaX;
+                        break;
+                    case 3: // Top edge
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 4: // Bottom edge
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 5: // Top-left corner
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 6: // Top-right corner
+                        newWidth += canvasDeltaX;
+                        newOffsetY -= canvasDeltaY;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 7: // Bottom-left corner
+                        newOffsetX -= canvasDeltaX;
+                        newWidth += canvasDeltaX;
+                        newHeight += canvasDeltaY;
+                        break;
+                    case 8: // Bottom-right corner
+                        newWidth += canvasDeltaX;
+                        newHeight += canvasDeltaY;
+                        break;
+                }
+                
+                // Ensure minimum size
+                if (newWidth < 100) newWidth = 100;
+                if (newHeight < 100) newHeight = 100;
+                
+                // Finalize canvas resize
+                ResizeCanvas(newWidth, newHeight, newOffsetX, newOffsetY, true);
+                isResizingCanvas = false;
+                canvasResizeEdge = 0;
+                picBoxMain.Cursor = Cursors.Default;
+                picBoxMain.Invalidate();
+                return;
+            }
+            
+            // Convert screen coordinates to canvas coordinates accounting for zoom
+            Point canvasLocation = ScreenToCanvas(e.Location);
+            
             if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
             {
                 // Finalize shape by drawing to bitmap
-                shapeEndPoint = e.Location;
+                shapeEndPoint = canvasLocation;
                 DrawShapeToCanvas();
                 isDrawingShape = false;
                 shapeStartPoint = Point.Empty;
@@ -650,214 +1125,310 @@ namespace Doodle_241439P
             isDraggingText = false;
             isDraggingImage = false;
         }
+        
+        // Resize the canvas bitmap
+        private void ResizeCanvas(int newWidth, int newHeight, int newOffsetX, int newOffsetY, bool saveUndo)
+        {
+            if (bm == null) return;
+            
+            if (saveUndo)
+            {
+                SaveUndoState(); // Save before resizing
+            }
+            
+            // Create new bitmap with new size
+            Bitmap newBitmap = new Bitmap(newWidth, newHeight);
+            using (Graphics g = Graphics.FromImage(newBitmap))
+            {
+                g.Clear(DrawingColor.LightGray);
+                
+                // Calculate where to draw the old bitmap in the new bitmap
+                int drawX = canvasOffsetX - newOffsetX;
+                int drawY = canvasOffsetY - newOffsetY;
+                
+                // Draw old bitmap at the correct position
+                g.DrawImage(bm, drawX, drawY);
+            }
+            
+            // Update bitmap and tracking variables
+            bm.Dispose();
+            bm = newBitmap;
+            canvasOffsetX = newOffsetX;
+            canvasOffsetY = newOffsetY;
+            canvasActualWidth = newWidth;
+            canvasActualHeight = newHeight;
+            
+            // Update Image property
+            if (zoomLevel == 1.0f && canvasOffsetX == 0 && canvasOffsetY == 0 && 
+                viewportOffsetX == 0 && viewportOffsetY == 0)
+            {
+                picBoxMain.Image = bm;
+            }
+            else
+            {
+                picBoxMain.Image = null; // Draw manually in Paint
+            }
+            
+            // Update scrollbars after canvas resize
+            UpdateScrollBars();
+        }
+        
+        // Clamp viewport offset to prevent scrolling beyond canvas bounds
+        // 
+        // Coordinate transformation analysis:
+        // In Paint: TranslateTransform(viewportOffsetX, viewportOffsetY) then ScaleTransform(zoomLevel) then DrawImage(bm, canvasOffsetX, canvasOffsetY)
+        //
+        // Graphics transformations work on the coordinate system:
+        // - TranslateTransform(viewportOffsetX, viewportOffsetY): moves origin, so point (x,y) appears at screen (viewportOffsetX + x, viewportOffsetY + y)
+        // - ScaleTransform(zoomLevel): scales coordinate system, so point (x,y) appears at screen (viewportOffsetX + x*zoomLevel, viewportOffsetY + y*zoomLevel)
+        //
+        // Canvas point (0,0) is at bitmap position (canvasOffsetX, canvasOffsetY)
+        // So canvas (0,0) appears at screen: (viewportOffsetX + canvasOffsetX * zoomLevel, viewportOffsetY + canvasOffsetY * zoomLevel)
+        //
+        // For canvas (0,0) to be at screen (0,0):
+        //   viewportOffsetX + canvasOffsetX * zoomLevel = 0
+        //   viewportOffsetX = -canvasOffsetX * zoomLevel
+        //
+        // Maximum scroll right: canvas right edge at viewport right edge
+        // Canvas right edge in canvas coords: canvasOffsetX + canvasActualWidth
+        // Canvas right edge in screen coords: viewportOffsetX + (canvasOffsetX + canvasActualWidth) * zoomLevel
+        // For right edge at viewport right: viewportOffsetX + (canvasOffsetX + canvasActualWidth) * zoomLevel = visibleWidth
+        // Therefore: viewportOffsetX = visibleWidth - (canvasOffsetX + canvasActualWidth) * zoomLevel
+        private void ClampViewportOffset()
+        {
+            if (bm == null) return;
+            
+            // Calculate the visible canvas size
+            int visibleWidth = picBoxMain.Width;
+            int visibleHeight = picBoxMain.Height;
+            
+            // Calculate where canvas (0,0) appears on screen
+            // Canvas (0,0) is at bitmap position (canvasOffsetX, canvasOffsetY)
+            // After transformations: screen position = viewportOffsetX + canvasOffsetX * zoomLevel
+            // For canvas (0,0) to be at screen (0,0): viewportOffsetX = -canvasOffsetX * zoomLevel
+            int minScrollX = (int)(-canvasOffsetX * zoomLevel);
+            int minScrollY = (int)(-canvasOffsetY * zoomLevel);
+            
+            // Calculate maximum scroll (canvas right/bottom edge at viewport right/bottom edge)
+            // Canvas right edge in canvas coords: canvasOffsetX + canvasActualWidth
+            // Canvas right edge in screen coords: viewportOffsetX + (canvasOffsetX + canvasActualWidth) * zoomLevel
+            // For right edge at viewport right: viewportOffsetX + (canvasOffsetX + canvasActualWidth) * zoomLevel = visibleWidth
+            int canvasRightEdgeCanvas = canvasOffsetX + canvasActualWidth;
+            int canvasBottomEdgeCanvas = canvasOffsetY + canvasActualHeight;
+            
+            int maxScrollX = visibleWidth - (int)(canvasRightEdgeCanvas * zoomLevel);
+            int maxScrollY = visibleHeight - (int)(canvasBottomEdgeCanvas * zoomLevel);
+            
+            // Clamp viewport offsets to valid range. When zoomed in, maxScroll < minScroll (e.g. maxScrollX negative),
+            // so the valid range is [maxScroll, minScroll]. Use min/max of the pair so it works for both zoom in and out.
+            int lowX = Math.Min(minScrollX, maxScrollX);
+            int highX = Math.Max(minScrollX, maxScrollX);
+            int lowY = Math.Min(minScrollY, maxScrollY);
+            int highY = Math.Max(minScrollY, maxScrollY);
+            viewportOffsetX = Math.Max(lowX, Math.Min(highX, viewportOffsetX));
+            viewportOffsetY = Math.Max(lowY, Math.Min(highY, viewportOffsetY));
+        }
+        
+        // Update scrollbar ranges and values based on canvas size and viewport
+        private void UpdateScrollBars()
+        {
+            if (bm == null) return;
+            
+            // Clamp viewport offset first to ensure it's within bounds
+            ClampViewportOffset();
+            
+            // Calculate the visible canvas size
+            int visibleWidth = picBoxMain.Width;
+            int visibleHeight = picBoxMain.Height;
+            
+            // Calculate canvas edges in canvas coordinates
+            int canvasLeftEdgeCanvas = canvasOffsetX;
+            int canvasTopEdgeCanvas = canvasOffsetY;
+            int canvasRightEdgeCanvas = canvasOffsetX + canvasActualWidth;
+            int canvasBottomEdgeCanvas = canvasOffsetY + canvasActualHeight;
+            
+            // Calculate canvas size in screen coordinates (after zoom)
+            int canvasWidthScreen = (int)(canvasActualWidth * zoomLevel);
+            int canvasHeightScreen = (int)(canvasActualHeight * zoomLevel);
+            
+            // Calculate scroll limits
+            // Minimum: canvas (0,0) at screen (0,0)
+            // Screen position of canvas (0,0) = viewportOffsetX + canvasOffsetX * zoomLevel
+            // For canvas (0,0) at screen (0,0): viewportOffsetX = -canvasOffsetX * zoomLevel
+            int minScrollX = (int)(-canvasOffsetX * zoomLevel);
+            int minScrollY = (int)(-canvasOffsetY * zoomLevel);
+            
+            // Maximum: canvas right/bottom edge at viewport right/bottom edge
+            // Screen position of canvas right edge = viewportOffsetX + canvasRightEdgeCanvas * zoomLevel
+            // For right edge at viewport right: viewportOffsetX + canvasRightEdgeCanvas * zoomLevel = visibleWidth
+            // Therefore: viewportOffsetX = visibleWidth - canvasRightEdgeCanvas * zoomLevel
+            int maxScrollX = visibleWidth - (int)(canvasRightEdgeCanvas * zoomLevel);
+            int maxScrollY = visibleHeight - (int)(canvasBottomEdgeCanvas * zoomLevel);
+            
+            // Show/hide scrollbars based on whether canvas is larger than viewport
+            // We need scrolling when zoomed in (canvas larger than viewport) or when we have a valid scroll range
+            bool needHScroll = canvasWidthScreen > visibleWidth || minScrollX != maxScrollX;
+            bool needVScroll = canvasHeightScreen > visibleHeight || minScrollY != maxScrollY;
+            
+            hScrollBarCanvas.Visible = needHScroll;
+            vScrollBarCanvas.Visible = needVScroll;
+            
+            if (needHScroll)
+            {
+                // Scrollbar range: when zoomed in, maxScrollX < minScrollX, so valid range is [maxScrollX, minScrollX].
+                // Always set Minimum <= Maximum for the control.
+                int rangeMinX = Math.Min(minScrollX, maxScrollX);
+                int rangeMaxX = Math.Max(minScrollX, maxScrollX);
+                int scrollRange = rangeMaxX - rangeMinX;
+                
+                hScrollBarCanvas.Minimum = rangeMinX;
+                hScrollBarCanvas.Maximum = rangeMaxX;
+                hScrollBarCanvas.LargeChange = Math.Max(1, Math.Min(visibleWidth, scrollRange));
+                hScrollBarCanvas.SmallChange = Math.Max(1, visibleWidth / 10);
+                hScrollBarCanvas.Value = Math.Max(rangeMinX, Math.Min(rangeMaxX, viewportOffsetX));
+            }
+            
+            if (needVScroll)
+            {
+                int rangeMinY = Math.Min(minScrollY, maxScrollY);
+                int rangeMaxY = Math.Max(minScrollY, maxScrollY);
+                int scrollRange = rangeMaxY - rangeMinY;
+                
+                vScrollBarCanvas.Minimum = rangeMinY;
+                vScrollBarCanvas.Maximum = rangeMaxY;
+                vScrollBarCanvas.LargeChange = Math.Max(1, Math.Min(visibleHeight, scrollRange));
+                vScrollBarCanvas.SmallChange = Math.Max(1, visibleHeight / 10);
+                vScrollBarCanvas.Value = Math.Max(rangeMinY, Math.Min(rangeMaxY, viewportOffsetY));
+            }
+        }
+        
+        // Handle horizontal scrollbar scroll
+        private void hScrollBarCanvas_Scroll(object sender, ScrollEventArgs e)
+        {
+            // Update viewport offset from scrollbar value
+            viewportOffsetX = e.NewValue;
+            // Clamp to ensure it's within bounds (scrollbar might allow slight out-of-range values)
+            ClampViewportOffset();
+            // Update scrollbar to reflect any clamping (but don't call UpdateScrollBars to avoid recursion)
+            if (hScrollBarCanvas.Visible)
+            {
+                hScrollBarCanvas.Value = viewportOffsetX;
+            }
+            // Redraw with new viewport position
+            picBoxMain.Invalidate();
+        }
+        
+        // Handle vertical scrollbar scroll
+        private void vScrollBarCanvas_Scroll(object sender, ScrollEventArgs e)
+        {
+            // Update viewport offset from scrollbar value
+            viewportOffsetY = e.NewValue;
+            // Clamp to ensure it's within bounds (scrollbar might allow slight out-of-range values)
+            ClampViewportOffset();
+            // Update scrollbar to reflect any clamping (but don't call UpdateScrollBars to avoid recursion)
+            if (vScrollBarCanvas.Visible)
+            {
+                vScrollBarCanvas.Value = viewportOffsetY;
+            }
+            // Redraw with new viewport position
+            picBoxMain.Invalidate();
+        }
+
+        // Helper method to handle color selection
+        private void HandleColorSelection(DrawingColor selectedColor)
+        {
+            // If a shape tool is active, update shape border color
+            if (flagLine || flagSquare || flagCircle || flagNgon)
+            {
+                shapeBorderColor = selectedColor;
+                picBoxShapeOutsideColor.BackColor = shapeBorderColor;
+                if (isDrawingShape)
+                {
+                    picBoxMain.Invalidate();
+                }
+            }
+            else
+            {
+                brushPen.Color = selectedColor;
+                brush.Color = selectedColor;
+                picBoxBrushColor.BackColor = brushPen.Color;
+                picBoxBrushColor.Image = null;
+                picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+                flagErase = false;
+            }
+
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
+        }
 
         private void picBoxRed_Click(object sender, EventArgs e)
         {
             // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxRed.BackColor;
-            brush.Color = picBoxRed.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxRed.BackColor);
         }
 
         private void picBoxBlack_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxBlack.BackColor;
-            brush.Color = picBoxBlack.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxBlack.BackColor);
         }
 
         private void picBoxGreen_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxGreen.BackColor;
-            brush.Color = picBoxGreen.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxGreen.BackColor);
         }
 
         private void picBoxBlue_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxBlue.BackColor;
-            brush.Color = picBoxBlue.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxBlue.BackColor);
         }
 
         private void picBoxCyan_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxCyan.BackColor;
-            brush.Color = picBoxCyan.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxCyan.BackColor);
         }
 
         private void picBoxMagenta_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxMagenta.BackColor;
-            brush.Color = picBoxMagenta.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = Cursors.Default;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxMagenta.BackColor);
         }
 
         private void picBoxYellow_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxYellow.BackColor;
-            brush.Color = picBoxYellow.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxYellow.BackColor);
         }
 
         private void picBoxOrange_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxOrange.BackColor;
-            brush.Color = picBoxOrange.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxOrange.BackColor);
         }
 
         private void picBoxWhite_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxWhite.BackColor;
-            brush.Color = picBoxWhite.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxWhite.BackColor);
         }
 
         private void picBoxPurple_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxPurple.BackColor;
-            brush.Color = picBoxPurple.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxPurple.BackColor);
         }
 
         private void picBoxBrown_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode
             AutoStampOnToolSwitch();
-
-            brushPen.Color = picBoxBrown.BackColor;
-            brush.Color = picBoxBrown.BackColor;
-            picBoxBrushColor.BackColor = brushPen.Color;
-            picBoxBrushColor.Image = null;
-            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-            flagErase = false;
-            
-            // Update text preview if in text mode
-            if (flagText)
-            {
-                picBoxMain.Invalidate();
-            }
+            HandleColorSelection(picBoxBrown.BackColor);
         }
 
         private void picBoxCustom_Click(object sender, EventArgs e)
@@ -869,20 +1440,78 @@ namespace Doodle_241439P
             {
                 colorDialog.AllowFullOpen = true;
                 colorDialog.FullOpen = true;
-                colorDialog.Color = brushPen.Color;
+
+                // If a shape tool is active, show current border color, otherwise show brush color
+                colorDialog.Color = (flagLine || flagSquare || flagCircle || flagNgon) ? shapeBorderColor : brushPen.Color;
 
                 if (colorDialog.ShowDialog() == DialogResult.OK)
                 {
-                    brushPen.Color = colorDialog.Color;
-                    brush.Color = colorDialog.Color;
-                    picBoxBrushColor.BackColor = brushPen.Color;
-                    picBoxCustom.BackColor = colorDialog.Color;
-                    picBoxBrushColor.Image = null;
-                    picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
-                    flagErase = false;
-                    
+                    if (flagLine || flagSquare || flagCircle || flagNgon)
+                    {
+                        shapeBorderColor = colorDialog.Color;
+                        picBoxShapeOutsideColor.BackColor = shapeBorderColor;
+                        if (isDrawingShape)
+                        {
+                            picBoxMain.Invalidate();
+                        }
+                    }
+                    else
+                    {
+                        brushPen.Color = colorDialog.Color;
+                        brush.Color = colorDialog.Color;
+                        picBoxBrushColor.BackColor = brushPen.Color;
+                        picBoxCustom.BackColor = colorDialog.Color;
+                        picBoxBrushColor.Image = null;
+                        picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+                        flagErase = false;
+                    }
+
                     // Update text preview if in text mode
                     if (flagText)
+                    {
+                        picBoxMain.Invalidate();
+                    }
+                }
+            }
+        }
+
+        private void picBoxShapeOutsideColor_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                colorDialog.AllowFullOpen = true;
+                colorDialog.FullOpen = true;
+                colorDialog.Color = shapeBorderColor;
+
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    shapeBorderColor = colorDialog.Color;
+                    picBoxShapeOutsideColor.BackColor = shapeBorderColor;
+
+                    // Update shape preview if drawing
+                    if (isDrawingShape)
+                    {
+                        picBoxMain.Invalidate();
+                    }
+                }
+            }
+        }
+
+        private void picBoxShapeInsideColor_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog colorDialog = new ColorDialog())
+            {
+                colorDialog.AllowFullOpen = true;
+                colorDialog.FullOpen = true;
+                colorDialog.Color = shapeFillColor;
+
+                if (colorDialog.ShowDialog() == DialogResult.OK)
+                {
+                    shapeFillColor = colorDialog.Color;
+                    picBoxShapeInsideColor.BackColor = shapeFillColor;
+
+                    // Update shape preview if drawing
+                    if (isDrawingShape)
                     {
                         picBoxMain.Invalidate();
                     }
@@ -1201,12 +1830,15 @@ namespace Doodle_241439P
         {
             if (bm == null) return;
 
-            // Ensure point is within bounds
-            if (startPoint.X < 0 || startPoint.X >= bm.Width || 
-                startPoint.Y < 0 || startPoint.Y >= bm.Height)
+            // Convert to bitmap coordinates
+            Point bitmapPoint = CanvasToBitmap(startPoint);
+
+            // Ensure point is within bitmap bounds (don't auto-expand)
+            if (bitmapPoint.X < 0 || bitmapPoint.X >= bm.Width ||
+                bitmapPoint.Y < 0 || bitmapPoint.Y >= bm.Height)
                 return;
 
-            DrawingColor targetColor = bm.GetPixel(startPoint.X, startPoint.Y);
+            DrawingColor targetColor = bm.GetPixel(bitmapPoint.X, bitmapPoint.Y);
             DrawingColor fillColor = brushPen.Color;
 
             // If clicking on the same color, don't do anything
@@ -1216,21 +1848,21 @@ namespace Doodle_241439P
             // Use a queue-based flood fill algorithm
             Queue<Point> queue = new Queue<Point>();
             HashSet<Point> visited = new HashSet<Point>();
-            
-            queue.Enqueue(startPoint);
-            visited.Add(startPoint);
+
+            queue.Enqueue(bitmapPoint);
+            visited.Add(bitmapPoint);
 
             while (queue.Count > 0)
             {
                 Point current = queue.Dequeue();
-                
+
                 // Check if this pixel matches the target color
-                if (current.X < 0 || current.X >= bm.Width || 
+                if (current.X < 0 || current.X >= bm.Width ||
                     current.Y < 0 || current.Y >= bm.Height)
                     continue;
 
                 DrawingColor pixelColor = bm.GetPixel(current.X, current.Y);
-                
+
                 // Use tolerance for color matching (helps with anti-aliasing)
                 if (ColorsMatch(pixelColor, targetColor))
                 {
@@ -1247,7 +1879,7 @@ namespace Doodle_241439P
 
                     foreach (Point neighbor in neighbors)
                     {
-                        if (!visited.Contains(neighbor) && 
+                        if (!visited.Contains(neighbor) &&
                             neighbor.X >= 0 && neighbor.X < bm.Width &&
                             neighbor.Y >= 0 && neighbor.Y < bm.Height)
                         {
@@ -1281,15 +1913,23 @@ namespace Doodle_241439P
             if (bm == null || string.IsNullOrEmpty(strText))
                 return;
 
+            // Convert to bitmap coordinates
+            Point bitmapTextPos = CanvasToBitmap(textPosition);
+            
+            // Check if within bounds (don't auto-expand)
+            if (bitmapTextPos.X < 0 || bitmapTextPos.Y < 0 ||
+                bitmapTextPos.X >= bm.Width || bitmapTextPos.Y >= bm.Height)
+                return;
+
             g = Graphics.FromImage(bm);
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
             Font font = new Font(selectedFontName, selectedFontSize);
             SolidBrush textBrush = new SolidBrush(brushPen.Color);
 
             // Draw text
-            g.DrawString(strText, font, textBrush, textPosition.X, textPosition.Y);
+            g.DrawString(strText, font, textBrush, bitmapTextPos.X, bitmapTextPos.Y);
 
-            // Calculate text bounds for dragging
+            // Calculate text bounds for dragging (in canvas coordinates)
             SizeF textSize = g.MeasureString(strText, font);
             Rectangle textRect = new Rectangle(textPosition.X, textPosition.Y,
                 (int)textSize.Width, (int)textSize.Height);
@@ -1339,7 +1979,7 @@ namespace Doodle_241439P
                                 paintPen.EndCap = LineCap.Round;
                                 paintPen.LineJoin = LineJoin.Round;
                                 // Draw at full opacity to temp bitmap
-                                tempG.DrawLine(paintPen, 
+                                tempG.DrawLine(paintPen,
                                     start.X - paintBounds.X, start.Y - paintBounds.Y,
                                     end.X - paintBounds.X, end.Y - paintBounds.Y);
                             }
@@ -1433,7 +2073,7 @@ namespace Doodle_241439P
                         distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
                         speed = 0; // Default to slow (thick) for first point
                     }
-                    
+
                     // Faster speed = thinner brush, slower speed = thicker brush
                     // Speed range: 0-5 pixels/ms, map to brush size variation: 0.6x to 1.4x
                     // Clamp speed to reasonable range
@@ -1441,7 +2081,7 @@ namespace Doodle_241439P
                     double speedFactor = Math.Max(0.6, Math.Min(1.4, 1.4 - (speed * 0.16)));
                     int wetBrushSize = (int)(brushSize * speedFactor);
                     wetBrushSize = Math.Max(1, wetBrushSize); // Ensure minimum size
-                    
+
                     // Slightly transparent (about 80% opacity)
                     DrawingColor wetColor = DrawingColor.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
                     using (DrawingPen wetPen = new DrawingPen(wetColor, wetBrushSize))
@@ -1523,21 +2163,28 @@ namespace Doodle_241439P
         {
             if (bm == null) return;
 
+            // Convert to bitmap coordinates
+            Point bitmapStart = CanvasToBitmap(shapeStartPoint);
+            Point bitmapEnd = CanvasToBitmap(shapeEndPoint);
+            
+            // Check if within bounds (don't auto-expand)
+            // Shapes can partially extend outside, so we'll allow drawing but clip to bounds
+
             g = Graphics.FromImage(bm);
             g.SmoothingMode = SmoothingMode.HighQuality;
-            // Use brushPen.Width to ensure it matches the current brush size setting
-            DrawingPen shapePen = new DrawingPen(brushPen.Color, brushPen.Width);
-            SolidBrush shapeBrush = new SolidBrush(brushPen.Color);
+            // Use brushPen.Width for border thickness, shapeBorderColor for border color
+            DrawingPen shapePen = new DrawingPen(shapeBorderColor, brushPen.Width);
+            SolidBrush shapeBrush = new SolidBrush(shapeFillColor);
 
             bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
 
             if (flagLine)
             {
-                g.DrawLine(shapePen, shapeStartPoint, shapeEndPoint);
+                g.DrawLine(shapePen, bitmapStart, bitmapEnd);
             }
             else if (flagSquare)
             {
-                Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                Rectangle rect = CalculateRectangle(bitmapStart, bitmapEnd, shiftPressed);
                 if (shapeFilled)
                 {
                     g.FillRectangle(shapeBrush, rect);
@@ -1546,7 +2193,7 @@ namespace Doodle_241439P
             }
             else if (flagCircle)
             {
-                Rectangle rect = CalculateRectangle(shapeStartPoint, shapeEndPoint, shiftPressed);
+                Rectangle rect = CalculateRectangle(bitmapStart, bitmapEnd, shiftPressed);
                 if (shapeFilled)
                 {
                     g.FillEllipse(shapeBrush, rect);
@@ -1557,7 +2204,7 @@ namespace Doodle_241439P
             {
                 // Use Ctrl for regular (equal-sided) polygon, like Shift for square/circle
                 bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
-                Point[] points = CalculateNgonPoints(shapeStartPoint, shapeEndPoint, ctrlPressed);
+                Point[] points = CalculateNgonPoints(bitmapStart, bitmapEnd, ctrlPressed);
                 if (points != null && points.Length > 0)
                 {
                     if (shapeFilled)
@@ -1636,9 +2283,285 @@ namespace Doodle_241439P
             return points;
         }
 
+        private void picBoxMain_MouseWheel(object sender, MouseEventArgs e)
+        {
+            bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
+            bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            
+            // Zoom when Ctrl is pressed
+            if (ctrlPressed)
+            {
+                // Determine zoom direction
+                float zoomFactor = e.Delta > 0 ? 1.1f : 0.9f;
+                float newZoom = zoomLevel * zoomFactor;
+
+                // Limit zoom range (10% to 500%)
+                if (newZoom < 0.1f) newZoom = 0.1f;
+                if (newZoom > 5.0f) newZoom = 5.0f;
+
+                if (newZoom != zoomLevel)
+                {
+                    zoomLevel = newZoom;
+
+                    // Update Image property based on zoom level and offset
+                    // When zoomed or offset, we draw manually in Paint
+                    if (zoomLevel == 1.0f && canvasOffsetX == 0 && canvasOffsetY == 0 && 
+                        viewportOffsetX == 0 && viewportOffsetY == 0 && bm != null)
+                    {
+                        picBoxMain.Image = bm;
+                    }
+                    else
+                    {
+                        picBoxMain.Image = null; // Draw manually in Paint when zoomed or offset
+                    }
+
+                    // Update scrollbars after zoom change
+                    UpdateScrollBars();
+                    
+                    // Redraw with new zoom level
+                    picBoxMain.Invalidate();
+                }
+            }
+            // Two-finger scrolling (inverse/natural scrolling): pan the viewport
+            else
+            {
+                // Inverse scrolling: two fingers up = scroll down, two fingers right = scroll left
+                // So we invert the delta direction
+                int scrollDelta = -e.Delta; // Invert for natural horizontal
+                
+                if (shiftPressed)
+                {
+                    // Horizontal scrolling via Shift+MouseWheel (fallback for systems that don't send WM_MOUSEHWHEEL)
+                    viewportOffsetX += scrollDelta / 3;
+                }
+                else
+                {
+                    // Vertical scrolling: flipped so wheel up = pan up, wheel down = pan down
+                    viewportOffsetY -= scrollDelta / 3;
+                }
+                
+                // Clamp and update scrollbars
+                ClampViewportOffset();
+                UpdateScrollBars();
+                
+                // Redraw with new viewport position
+                picBoxMain.Invalidate();
+            }
+        }
+
+        // Convert screen coordinates to canvas coordinates accounting for zoom and viewport pan
+        private Point ScreenToCanvas(Point screenPoint)
+        {
+            // Account for viewport pan offset
+            int canvasX = screenPoint.X - viewportOffsetX;
+            int canvasY = screenPoint.Y - viewportOffsetY;
+            
+            // Account for zoom
+            if (zoomLevel != 1.0f)
+            {
+                canvasX = (int)(canvasX / zoomLevel);
+                canvasY = (int)(canvasY / zoomLevel);
+            }
+            
+            return new Point(canvasX, canvasY);
+        }
+
+        // Expand canvas bitmap if drawing outside current bounds
+        // point is in canvas coordinates (logical canvas space)
+        private void ExpandCanvasIfNeeded(Point point, int padding = 50)
+        {
+            if (bm == null) return;
+
+            // Convert canvas coordinates to bitmap coordinates
+            int bitmapX = point.X - canvasOffsetX;
+            int bitmapY = point.Y - canvasOffsetY;
+
+            // Check if we need to expand
+            bool needExpand = false;
+            int newOffsetX = canvasOffsetX;
+            int newOffsetY = canvasOffsetY;
+            int newWidth = canvasActualWidth;
+            int newHeight = canvasActualHeight;
+
+            // Check if point is to the left of current bitmap
+            if (bitmapX < -padding)
+            {
+                int expandLeft = -bitmapX + padding;
+                newOffsetX -= expandLeft; // Move origin further left
+                newWidth += expandLeft;
+                needExpand = true;
+            }
+            // Check if point is to the right of current bitmap
+            else if (bitmapX >= canvasActualWidth + padding)
+            {
+                int expandRight = bitmapX - canvasActualWidth + padding;
+                newWidth += expandRight;
+                needExpand = true;
+            }
+
+            // Check if point is above current bitmap
+            if (bitmapY < -padding)
+            {
+                int expandTop = -bitmapY + padding;
+                newOffsetY -= expandTop; // Move origin further up
+                newHeight += expandTop;
+                needExpand = true;
+            }
+            // Check if point is below current bitmap
+            else if (bitmapY >= canvasActualHeight + padding)
+            {
+                int expandBottom = bitmapY - canvasActualHeight + padding;
+                newHeight += expandBottom;
+                needExpand = true;
+            }
+
+            if (needExpand)
+            {
+                SaveUndoState(); // Save before expanding
+
+                // Create new larger bitmap
+                Bitmap newBitmap = new Bitmap(newWidth, newHeight);
+                using (Graphics g = Graphics.FromImage(newBitmap))
+                {
+                    g.Clear(DrawingColor.LightGray);
+                    
+                    // Draw old bitmap at the position that maintains canvas (0,0) at the same logical position
+                    // The old bitmap was drawn at (canvasOffsetX - oldOffsetX, ...) in the old bitmap
+                    // Now we need to draw it at (newOffsetX - oldOffsetX, ...) in the new bitmap
+                    // But since canvasOffsetX changed, we need to adjust
+                    int oldBitmapX = canvasOffsetX - newOffsetX;
+                    int oldBitmapY = canvasOffsetY - newOffsetY;
+                    g.DrawImage(bm, oldBitmapX, oldBitmapY);
+                }
+
+                // Update bitmap and tracking variables
+                bm.Dispose();
+                bm = newBitmap;
+                canvasOffsetX = newOffsetX;
+                canvasOffsetY = newOffsetY;
+                canvasActualWidth = newWidth;
+                canvasActualHeight = newHeight;
+
+                // Update Image property if not zoomed and no offset (for performance)
+                // If we have an offset, we'll draw manually in Paint
+                if (zoomLevel == 1.0f && canvasOffsetX == 0 && canvasOffsetY == 0)
+                {
+                    picBoxMain.Image = bm;
+                }
+                else
+                {
+                    picBoxMain.Image = null; // Draw manually in Paint
+                }
+            }
+        }
+
+        // Convert canvas coordinates to bitmap coordinates (accounting for offset)
+        private Point CanvasToBitmap(Point canvasPoint)
+        {
+            return new Point(
+                canvasPoint.X - canvasOffsetX,
+                canvasPoint.Y - canvasOffsetY
+            );
+        }
+
+        // Get canvas bounds in screen coordinates (accounting for viewport pan and zoom)
+        private Rectangle GetCanvasBoundsScreen()
+        {
+            int screenX, screenY, screenWidth, screenHeight;
+            
+            if (zoomLevel == 1.0f)
+            {
+                screenX = viewportOffsetX;
+                screenY = viewportOffsetY;
+                screenWidth = canvasActualWidth;
+                screenHeight = canvasActualHeight;
+            }
+            else
+            {
+                // When zoomed, canvas appears smaller, and we need to account for viewport pan
+                screenX = viewportOffsetX + (int)(canvasOffsetX * zoomLevel);
+                screenY = viewportOffsetY + (int)(canvasOffsetY * zoomLevel);
+                screenWidth = (int)(canvasActualWidth * zoomLevel);
+                screenHeight = (int)(canvasActualHeight * zoomLevel);
+            }
+            
+            return new Rectangle(screenX, screenY, screenWidth, screenHeight);
+        }
+
+        // Check if point is on a canvas resize handle
+        private int GetCanvasResizeHandle(Point screenPoint)
+        {
+            if (zoomLevel == 1.0f) return 0; // No resize handles when not zoomed
+            
+            Rectangle canvasBounds = GetCanvasBoundsScreen();
+            int handleSize = RESIZE_HANDLE_SIZE;
+            
+            // Check corners first (they take priority)
+            if (Math.Abs(screenPoint.X - canvasBounds.Left) <= handleSize && 
+                Math.Abs(screenPoint.Y - canvasBounds.Top) <= handleSize)
+                return 5; // Top-left
+            if (Math.Abs(screenPoint.X - canvasBounds.Right) <= handleSize && 
+                Math.Abs(screenPoint.Y - canvasBounds.Top) <= handleSize)
+                return 6; // Top-right
+            if (Math.Abs(screenPoint.X - canvasBounds.Left) <= handleSize && 
+                Math.Abs(screenPoint.Y - canvasBounds.Bottom) <= handleSize)
+                return 7; // Bottom-left
+            if (Math.Abs(screenPoint.X - canvasBounds.Right) <= handleSize && 
+                Math.Abs(screenPoint.Y - canvasBounds.Bottom) <= handleSize)
+                return 8; // Bottom-right
+            
+            // Check edges
+            if (Math.Abs(screenPoint.X - canvasBounds.Left) <= handleSize && 
+                screenPoint.Y >= canvasBounds.Top && screenPoint.Y <= canvasBounds.Bottom)
+                return 1; // Left
+            if (Math.Abs(screenPoint.X - canvasBounds.Right) <= handleSize && 
+                screenPoint.Y >= canvasBounds.Top && screenPoint.Y <= canvasBounds.Bottom)
+                return 2; // Right
+            if (Math.Abs(screenPoint.Y - canvasBounds.Top) <= handleSize && 
+                screenPoint.X >= canvasBounds.Left && screenPoint.X <= canvasBounds.Right)
+                return 3; // Top
+            if (Math.Abs(screenPoint.Y - canvasBounds.Bottom) <= handleSize && 
+                screenPoint.X >= canvasBounds.Left && screenPoint.X <= canvasBounds.Right)
+                return 4; // Bottom
+            
+            return 0; // Not on a handle
+        }
+
         private void picBoxMain_Paint(object sender, PaintEventArgs e)
         {
+            // Save graphics state for overlays
+            GraphicsState overlayState = e.Graphics.Save();
+            
+            // Apply viewport pan offset first (translate before zoom)
+            // Always apply, even if 0, to maintain consistent transformation order
+            e.Graphics.TranslateTransform(viewportOffsetX, viewportOffsetY);
+            
+            // Apply zoom transformation if zoomed
+            if (zoomLevel != 1.0f)
+            {
+                e.Graphics.ScaleTransform(zoomLevel, zoomLevel);
+                e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor; // Use nearest neighbor for pixel-perfect zoom
+                
+                // Draw the bitmap manually when zoomed (Image property is set to null)
+                // Position it so canvas (0,0) aligns with PictureBox (0,0) after viewport offset
+                if (bm != null)
+                {
+                    e.Graphics.DrawImage(bm, canvasOffsetX, canvasOffsetY);
+                }
+            }
+            // When not zoomed, check if we need to draw manually
+            else if (canvasOffsetX != 0 || canvasOffsetY != 0 || viewportOffsetX != 0 || viewportOffsetY != 0)
+            {
+                // If we have any offset (canvas or viewport), draw manually
+                if (bm != null)
+                {
+                    e.Graphics.DrawImage(bm, canvasOffsetX, canvasOffsetY);
+                }
+            }
+            // When no zoom and no offsets, Image property handles drawing automatically
+
             // Draw all placed images as temporary overlay (not yet stamped to bitmap)
+            // MUST be drawn before restoring graphics state so they're in canvas coordinates
             if ((flagLoad || flagEmoji) && placedImages.Count > 0)
             {
                 e.Graphics.CompositingMode = CompositingMode.SourceOver;
@@ -1665,13 +2588,55 @@ namespace Doodle_241439P
                 }
             }
 
-            // Draw border around selected image in load/emoji mode
+            // Draw border around selected image in load/emoji mode (also in canvas coordinates)
             if ((flagLoad || flagEmoji) && selectedImage != null && !isDraggingImage)
             {
                 Rectangle bounds = GetScaledBounds(selectedImage);
                 using (DrawingPen borderPen = new DrawingPen(DrawingColor.Blue, 2))
                 {
                     e.Graphics.DrawRectangle(borderPen, bounds);
+                }
+            }
+            
+            // Restore graphics state for overlays (drawn in screen coordinates)
+            e.Graphics.Restore(overlayState);
+            
+            // Draw canvas bounds and resize handles when zoomed out (in screen coordinates)
+            if (zoomLevel < 1.0f)
+            {
+                Rectangle canvasBounds = GetCanvasBoundsScreen();
+                
+                // Draw canvas border
+                using (DrawingPen borderPen = new DrawingPen(DrawingColor.Blue, 2))
+                {
+                    e.Graphics.DrawRectangle(borderPen, canvasBounds);
+                }
+                
+                // Draw resize handles
+                int handleSize = RESIZE_HANDLE_SIZE;
+                using (SolidBrush handleBrush = new SolidBrush(DrawingColor.Orange))
+                {
+                    // Corner handles
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Left - handleSize/2, canvasBounds.Top - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Right - handleSize/2, canvasBounds.Top - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Left - handleSize/2, canvasBounds.Bottom - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Right - handleSize/2, canvasBounds.Bottom - handleSize/2, handleSize, handleSize);
+                    
+                    // Edge handles
+                    int midX = (canvasBounds.Left + canvasBounds.Right) / 2;
+                    int midY = (canvasBounds.Top + canvasBounds.Bottom) / 2;
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Left - handleSize/2, midY - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        canvasBounds.Right - handleSize/2, midY - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        midX - handleSize/2, canvasBounds.Top - handleSize/2, handleSize, handleSize);
+                    e.Graphics.FillRectangle(handleBrush, 
+                        midX - handleSize/2, canvasBounds.Bottom - handleSize/2, handleSize, handleSize);
                 }
             }
 
@@ -1696,9 +2661,9 @@ namespace Doodle_241439P
             if (isDrawingShape && (flagLine || flagSquare || flagCircle || flagNgon))
             {
                 e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
-                // Use brushPen.Width to ensure it matches the current brush size setting
-                using (DrawingPen previewPen = new DrawingPen(DrawingColor.FromArgb(180, brushPen.Color), brushPen.Width))
-                using (SolidBrush previewBrush = new SolidBrush(DrawingColor.FromArgb(128, brushPen.Color)))
+                // Use brushPen.Width for border thickness, shapeBorderColor for border, shapeFillColor for fill
+                using (DrawingPen previewPen = new DrawingPen(DrawingColor.FromArgb(180, shapeBorderColor), brushPen.Width))
+                using (SolidBrush previewBrush = new SolidBrush(DrawingColor.FromArgb(128, shapeFillColor)))
                 {
                     bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
 
@@ -1909,10 +2874,10 @@ namespace Doodle_241439P
             {
                 textSize = measureG.MeasureString(emoji, emojiFont);
             }
-            
+
             int bitmapWidth = Math.Max(size, (int)textSize.Width + 20);
             int bitmapHeight = Math.Max(size, (int)textSize.Height + 20);
-            
+
             try
             {
                 // Use WPF with Emoji.Wpf to render colored emojis
@@ -1926,7 +2891,7 @@ namespace Doodle_241439P
                     Background = System.Windows.Media.Brushes.White, // White background for transparency key
                     Foreground = System.Windows.Media.Brushes.Black // Text color (doesn't affect emoji colors)
                 };
-                
+
                 // Create a container to host the TextBlock
                 var container = new System.Windows.Controls.Border
                 {
@@ -1935,43 +2900,43 @@ namespace Doodle_241439P
                     Background = System.Windows.Media.Brushes.White,
                     Child = emojiTextBlock
                 };
-                
+
                 // Measure and arrange
                 container.Measure(new System.Windows.Size(bitmapWidth, bitmapHeight));
                 container.Arrange(new System.Windows.Rect(0, 0, bitmapWidth, bitmapHeight));
                 container.UpdateLayout();
-                
+
                 // Create a RenderTargetBitmap to capture the WPF control
                 var dpiScale = 96.0; // Standard DPI
                 var renderBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
-                    bitmapWidth, 
-                    bitmapHeight, 
-                    dpiScale, 
-                    dpiScale, 
+                    bitmapWidth,
+                    bitmapHeight,
+                    dpiScale,
+                    dpiScale,
                     System.Windows.Media.PixelFormats.Pbgra32);
-                
+
                 // Render the container to the bitmap
                 renderBitmap.Render(container);
                 renderBitmap.Freeze(); // Freeze for thread safety
-                
+
                 // Convert WPF BitmapSource to System.Drawing.Bitmap
                 Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 var bitmapData = bmp.LockBits(
                     new Rectangle(0, 0, bitmapWidth, bitmapHeight),
                     ImageLockMode.WriteOnly,
                     System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                
+
                 renderBitmap.CopyPixels(
                     System.Windows.Int32Rect.Empty,
                     bitmapData.Scan0,
                     bitmapData.Height * bitmapData.Stride,
                     bitmapData.Stride);
-                
+
                 bmp.UnlockBits(bitmapData);
-                
+
                 // Make white background transparent
                 bmp.MakeTransparent(DrawingColor.White);
-                
+
                 emojiFont.Dispose();
                 return bmp;
             }
@@ -1979,7 +2944,7 @@ namespace Doodle_241439P
             {
                 // Fallback to black emoji if WPF rendering fails
                 System.Diagnostics.Debug.WriteLine($"Emoji.Wpf rendering failed: {ex.Message}, falling back to GDI+");
-                
+
                 Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight);
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
@@ -2003,7 +2968,7 @@ namespace Doodle_241439P
             {
                 AutoStampOnToolSwitch();
             }
-            
+
             // If emojiText is already set and we're switching back to emoji mode,
             // just re-enable emoji mode without showing the dialog
             if (!string.IsNullOrEmpty(emojiText) && !flagEmoji)
@@ -2027,7 +2992,7 @@ namespace Doodle_241439P
                 UpdateUnifiedComboBox();
                 return;
             }
-            
+
             // If already in emoji mode, show dialog to allow changing emoji
             // Otherwise, prompt user to enter emoji (first time or empty emojiText)
             using (Form emojiInputForm = new Form())
@@ -2550,6 +3515,11 @@ namespace Doodle_241439P
         }
 
         private void lblUnifiedCombo_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void trackBarNgonSides_Scroll(object sender, EventArgs e)
         {
 
         }

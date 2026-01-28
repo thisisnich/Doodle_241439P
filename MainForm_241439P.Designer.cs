@@ -64,6 +64,10 @@ namespace Doodle_241439P
             lblNgonSides = new Label();
             checkBoxShapeFilled = new CheckBox();
             trackBarNgonSides = new TrackBar();
+            picBoxShapeOutsideColor = new PictureBox();
+            picBoxShapeInsideColor = new PictureBox();
+            lblShapeOutsideColor = new Label();
+            lblShapeInsideColor = new Label();
             picBoxSave = new PictureBox();
             picBoxClear = new PictureBox();
             picBoxErase = new PictureBox();
@@ -77,6 +81,8 @@ namespace Doodle_241439P
             lblUnified = new Label();
             comboBoxUnified = new ComboBox();
             lblUnifiedCombo = new Label();
+            hScrollBarCanvas = new HScrollBar();
+            vScrollBarCanvas = new VScrollBar();
             toolTip = new ToolTip(components);
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).BeginInit();
@@ -100,6 +106,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxCircle).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxNgon).BeginInit();
             ((System.ComponentModel.ISupportInitialize)trackBarNgonSides).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxShapeOutsideColor).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxShapeInsideColor).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxSave).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxClear).BeginInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).BeginInit();
@@ -118,7 +126,7 @@ namespace Doodle_241439P
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 3, 0, 3);
-            menuStrip1.Size = new Size(885, 30);
+            menuStrip1.Size = new Size(977, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -156,13 +164,26 @@ namespace Doodle_241439P
             picBoxMain.BackColor = Color.LightGray;
             picBoxMain.Location = new Point(11, 151);
             picBoxMain.Name = "picBoxMain";
-            picBoxMain.Size = new Size(870, 410);
+            picBoxMain.Size = new Size(943, 399); // Reduced to account for scrollbars
             picBoxMain.TabIndex = 1;
             picBoxMain.TabStop = false;
             picBoxMain.Paint += picBoxMain_Paint;
             picBoxMain.MouseDown += picBoxMain_MouseDown;
             picBoxMain.MouseMove += picBoxMain_MouseMove;
             picBoxMain.MouseUp += picBoxMain_MouseUp;
+            picBoxMain.MouseWheel += picBoxMain_MouseWheel;
+            // 
+            // hScrollBarCanvas
+            // 
+            hScrollBarCanvas.Dock = DockStyle.Bottom;
+            hScrollBarCanvas.Name = "hScrollBarCanvas";
+            hScrollBarCanvas.Scroll += hScrollBarCanvas_Scroll;
+            // 
+            // vScrollBarCanvas
+            // 
+            vScrollBarCanvas.Dock = DockStyle.Right;
+            vScrollBarCanvas.Name = "vScrollBarCanvas";
+            vScrollBarCanvas.Scroll += vScrollBarCanvas_Scroll;
             // 
             // panelColor
             // 
@@ -328,16 +349,20 @@ namespace Doodle_241439P
             panelShapes.Controls.Add(lblNgonSides);
             panelShapes.Controls.Add(checkBoxShapeFilled);
             panelShapes.Controls.Add(trackBarNgonSides);
+            panelShapes.Controls.Add(picBoxShapeOutsideColor);
+            panelShapes.Controls.Add(picBoxShapeInsideColor);
+            panelShapes.Controls.Add(lblShapeOutsideColor);
+            panelShapes.Controls.Add(lblShapeInsideColor);
             panelShapes.Location = new Point(271, 33);
             panelShapes.Name = "panelShapes";
-            panelShapes.Size = new Size(215, 112);
+            panelShapes.Size = new Size(296, 112);
             panelShapes.TabIndex = 36;
             // 
             // txtBoxText
             // 
-            txtBoxText.Location = new Point(3, 82);
+            txtBoxText.Location = new Point(0, 80);
             txtBoxText.Name = "txtBoxText";
-            txtBoxText.Size = new Size(209, 27);
+            txtBoxText.Size = new Size(293, 27);
             txtBoxText.TabIndex = 12;
             txtBoxText.TextChanged += txtBoxText_TextChanged;
             // 
@@ -404,7 +429,7 @@ namespace Doodle_241439P
             // checkBoxShapeFilled
             // 
             checkBoxShapeFilled.AutoSize = true;
-            checkBoxShapeFilled.Location = new Point(147, 43);
+            checkBoxShapeFilled.Location = new Point(147, 27);
             checkBoxShapeFilled.Name = "checkBoxShapeFilled";
             checkBoxShapeFilled.Size = new Size(67, 24);
             checkBoxShapeFilled.TabIndex = 35;
@@ -418,16 +443,57 @@ namespace Doodle_241439P
             trackBarNgonSides.Maximum = 20;
             trackBarNgonSides.Minimum = 3;
             trackBarNgonSides.Name = "trackBarNgonSides";
-            trackBarNgonSides.Size = new Size(138, 56);
+            trackBarNgonSides.Size = new Size(290, 56);
             trackBarNgonSides.TabIndex = 33;
             trackBarNgonSides.Value = 5;
+            trackBarNgonSides.Scroll += trackBarNgonSides_Scroll;
             trackBarNgonSides.ValueChanged += trackBarNgonSides_ValueChanged;
+            // 
+            // picBoxShapeOutsideColor
+            // 
+            picBoxShapeOutsideColor.BackColor = Color.Black;
+            picBoxShapeOutsideColor.BorderStyle = BorderStyle.FixedSingle;
+            picBoxShapeOutsideColor.Location = new Point(273, 7);
+            picBoxShapeOutsideColor.Name = "picBoxShapeOutsideColor";
+            picBoxShapeOutsideColor.Size = new Size(20, 20);
+            picBoxShapeOutsideColor.TabIndex = 37;
+            picBoxShapeOutsideColor.TabStop = false;
+            picBoxShapeOutsideColor.Click += picBoxShapeOutsideColor_Click;
+            // 
+            // picBoxShapeInsideColor
+            // 
+            picBoxShapeInsideColor.BackColor = Color.Black;
+            picBoxShapeInsideColor.BorderStyle = BorderStyle.FixedSingle;
+            picBoxShapeInsideColor.Location = new Point(273, 27);
+            picBoxShapeInsideColor.Name = "picBoxShapeInsideColor";
+            picBoxShapeInsideColor.Size = new Size(20, 20);
+            picBoxShapeInsideColor.TabIndex = 39;
+            picBoxShapeInsideColor.TabStop = false;
+            picBoxShapeInsideColor.Click += picBoxShapeInsideColor_Click;
+            // 
+            // lblShapeOutsideColor
+            // 
+            lblShapeOutsideColor.AutoSize = true;
+            lblShapeOutsideColor.Location = new Point(212, 7);
+            lblShapeOutsideColor.Name = "lblShapeOutsideColor";
+            lblShapeOutsideColor.Size = new Size(63, 20);
+            lblShapeOutsideColor.TabIndex = 36;
+            lblShapeOutsideColor.Text = "Outside:";
+            // 
+            // lblShapeInsideColor
+            // 
+            lblShapeInsideColor.AutoSize = true;
+            lblShapeInsideColor.Location = new Point(213, 27);
+            lblShapeInsideColor.Name = "lblShapeInsideColor";
+            lblShapeInsideColor.Size = new Size(51, 20);
+            lblShapeInsideColor.TabIndex = 38;
+            lblShapeInsideColor.Text = "Inside:";
             // 
             // picBoxSave
             // 
             picBoxSave.BackColor = Color.Transparent;
             picBoxSave.Image = Properties.Resources.diskette;
-            picBoxSave.Location = new Point(606, 95);
+            picBoxSave.Location = new Point(685, 92);
             picBoxSave.Name = "picBoxSave";
             picBoxSave.Size = new Size(50, 50);
             picBoxSave.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -439,7 +505,7 @@ namespace Doodle_241439P
             // 
             picBoxClear.BackColor = Color.Transparent;
             picBoxClear.Image = Properties.Resources.trash;
-            picBoxClear.Location = new Point(550, 95);
+            picBoxClear.Location = new Point(629, 92);
             picBoxClear.Name = "picBoxClear";
             picBoxClear.Size = new Size(50, 50);
             picBoxClear.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -451,7 +517,7 @@ namespace Doodle_241439P
             // 
             picBoxErase.BackColor = Color.Transparent;
             picBoxErase.Image = Properties.Resources.eraser;
-            picBoxErase.Location = new Point(494, 33);
+            picBoxErase.Location = new Point(573, 30);
             picBoxErase.Name = "picBoxErase";
             picBoxErase.Size = new Size(50, 50);
             picBoxErase.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -463,7 +529,7 @@ namespace Doodle_241439P
             // 
             picBoxText.BackColor = Color.Transparent;
             picBoxText.Image = Properties.Resources.text;
-            picBoxText.Location = new Point(550, 33);
+            picBoxText.Location = new Point(629, 30);
             picBoxText.Name = "picBoxText";
             picBoxText.Size = new Size(50, 50);
             picBoxText.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -475,7 +541,7 @@ namespace Doodle_241439P
             // 
             picBoxLoad.BackColor = Color.Transparent;
             picBoxLoad.Image = Properties.Resources.image;
-            picBoxLoad.Location = new Point(606, 33);
+            picBoxLoad.Location = new Point(685, 30);
             picBoxLoad.Name = "picBoxLoad";
             picBoxLoad.Size = new Size(50, 50);
             picBoxLoad.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -487,7 +553,7 @@ namespace Doodle_241439P
             // 
             picBoxBrush.BackColor = Color.Transparent;
             picBoxBrush.Image = Properties.Resources.paint_brush;
-            picBoxBrush.Location = new Point(494, 95);
+            picBoxBrush.Location = new Point(573, 92);
             picBoxBrush.Name = "picBoxBrush";
             picBoxBrush.Size = new Size(50, 50);
             picBoxBrush.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -499,7 +565,7 @@ namespace Doodle_241439P
             // 
             picBoxEmoji.BackColor = Color.Transparent;
             picBoxEmoji.Image = Properties.Resources.happy_face;
-            picBoxEmoji.Location = new Point(663, 33);
+            picBoxEmoji.Location = new Point(742, 30);
             picBoxEmoji.Name = "picBoxEmoji";
             picBoxEmoji.Size = new Size(50, 50);
             picBoxEmoji.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -511,7 +577,7 @@ namespace Doodle_241439P
             // 
             picBoxFill.BackColor = Color.Transparent;
             picBoxFill.Image = Properties.Resources.bucket;
-            picBoxFill.Location = new Point(663, 95);
+            picBoxFill.Location = new Point(742, 92);
             picBoxFill.Name = "picBoxFill";
             picBoxFill.Size = new Size(50, 50);
             picBoxFill.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -521,7 +587,7 @@ namespace Doodle_241439P
             // 
             // btnStampImage
             // 
-            btnStampImage.Location = new Point(719, 105);
+            btnStampImage.Location = new Point(802, 105);
             btnStampImage.Name = "btnStampImage";
             btnStampImage.Size = new Size(82, 35);
             btnStampImage.TabIndex = 0;
@@ -532,7 +598,7 @@ namespace Doodle_241439P
             // 
             // trackBarUnified
             // 
-            trackBarUnified.Location = new Point(719, 55);
+            trackBarUnified.Location = new Point(802, 55);
             trackBarUnified.Maximum = 70;
             trackBarUnified.Minimum = 10;
             trackBarUnified.Name = "trackBarUnified";
@@ -545,7 +611,7 @@ namespace Doodle_241439P
             // lblUnified
             // 
             lblUnified.AutoSize = true;
-            lblUnified.Location = new Point(719, 30);
+            lblUnified.Location = new Point(802, 30);
             lblUnified.Name = "lblUnified";
             lblUnified.Size = new Size(88, 20);
             lblUnified.TabIndex = 39;
@@ -556,7 +622,7 @@ namespace Doodle_241439P
             comboBoxUnified.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxUnified.FormattingEnabled = true;
             comboBoxUnified.Items.AddRange(new object[] { "Pen", "Paintbrush", "Marker", "Pencil", "Airbrush", "Wet Brush" });
-            comboBoxUnified.Location = new Point(719, 105);
+            comboBoxUnified.Location = new Point(802, 105);
             comboBoxUnified.Name = "comboBoxUnified";
             comboBoxUnified.Size = new Size(162, 28);
             comboBoxUnified.TabIndex = 41;
@@ -565,7 +631,7 @@ namespace Doodle_241439P
             // lblUnifiedCombo
             // 
             lblUnifiedCombo.AutoSize = true;
-            lblUnifiedCombo.Location = new Point(719, 82);
+            lblUnifiedCombo.Location = new Point(802, 82);
             lblUnifiedCombo.Name = "lblUnifiedCombo";
             lblUnifiedCombo.Size = new Size(83, 20);
             lblUnifiedCombo.TabIndex = 40;
@@ -576,7 +642,7 @@ namespace Doodle_241439P
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(885, 577);
+            ClientSize = new Size(977, 577);
             Controls.Add(panelShapes);
             Controls.Add(btnStampImage);
             Controls.Add(comboBoxUnified);
@@ -593,13 +659,17 @@ namespace Doodle_241439P
             Controls.Add(picBoxSave);
             Controls.Add(panelColor);
             Controls.Add(picBoxMain);
+            Controls.Add(hScrollBarCanvas);
+            Controls.Add(vScrollBarCanvas);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
             Margin = new Padding(3, 4, 3, 4);
+            MinimumSize = new Size(903, 624);
             Name = "MainForm_241439P";
             StartPosition = FormStartPosition.CenterScreen;
             Text = " ";
             Load += MainForm_241439P_Load;
+            Resize += MainForm_241439P_Resize;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).EndInit();
@@ -624,6 +694,8 @@ namespace Doodle_241439P
             ((System.ComponentModel.ISupportInitialize)picBoxCircle).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxNgon).EndInit();
             ((System.ComponentModel.ISupportInitialize)trackBarNgonSides).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxShapeOutsideColor).EndInit();
+            ((System.ComponentModel.ISupportInitialize)picBoxShapeInsideColor).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxSave).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxClear).EndInit();
             ((System.ComponentModel.ISupportInitialize)picBoxErase).EndInit();
@@ -681,6 +753,12 @@ namespace Doodle_241439P
         private System.Windows.Forms.TrackBar trackBarNgonSides;
         private System.Windows.Forms.Label lblNgonSides;
         private System.Windows.Forms.CheckBox checkBoxShapeFilled;
+        private System.Windows.Forms.PictureBox picBoxShapeOutsideColor;
+        private System.Windows.Forms.PictureBox picBoxShapeInsideColor;
+        private System.Windows.Forms.Label lblShapeOutsideColor;
+        private System.Windows.Forms.Label lblShapeInsideColor;
         private System.Windows.Forms.ToolTip toolTip;
+        private System.Windows.Forms.HScrollBar hScrollBarCanvas;
+        private System.Windows.Forms.VScrollBar vScrollBarCanvas;
     }
 }

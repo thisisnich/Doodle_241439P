@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Doodle_241439P.Properties;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+// WPF imports only used in CreateEmojiBitmap method - using fully qualified names to avoid conflicts
 
 namespace Doodle_241439P
 {
@@ -21,8 +22,8 @@ namespace Doodle_241439P
     {
         Bitmap bm;
         Graphics g;
-        Pen brushPen = new Pen(Color.Black, 8);  // Thick pen for brush drawing
-        Pen eraserPen = new Pen(Color.LightGray, 30);  // Pen for eraser drawing
+        System.Drawing.Pen brushPen = new System.Drawing.Pen(Color.Black, 8);  // Thick pen for brush drawing
+        System.Drawing.Pen eraserPen = new System.Drawing.Pen(Color.LightGray, 30);  // Pen for eraser drawing
         SolidBrush brush = new SolidBrush(Color.Black);
         Point startP = new Point(0, 0);
         Point endP = new Point(0, 0);
@@ -1245,7 +1246,7 @@ namespace Doodle_241439P
         }
 
         // Helper method to check if two colors match (with tolerance)
-        private bool ColorsMatch(Color c1, Color c2, int tolerance = 5)
+        private bool ColorsMatch(System.Drawing.Color c1, System.Drawing.Color c2, int tolerance = 5)
         {
             return Math.Abs(c1.R - c2.R) <= tolerance &&
                    Math.Abs(c1.G - c2.G) <= tolerance &&
@@ -1882,10 +1883,12 @@ namespace Doodle_241439P
             }
         }
 
-        // Create a bitmap from emoji text (supports multiple emojis)
+        // Create a bitmap from emoji text with COLORED emoji support
+        // Uses WPF interop with Emoji.Wpf library to render colored emojis
+        // Solution based on: https://stackoverflow.com/questions/49721440/display-colored-emoji-instead-of-black-and-white
         private Bitmap CreateEmojiBitmap(string emoji, int size)
         {
-            // Measure the text first to determine bitmap size
+            // First, measure the text to determine bitmap size
             Font emojiFont = new Font("Segoe UI Emoji", size * 0.7f, FontStyle.Regular, GraphicsUnit.Pixel);
             SizeF textSize;
             using (Graphics measureG = this.CreateGraphics())
@@ -1893,29 +1896,89 @@ namespace Doodle_241439P
                 textSize = measureG.MeasureString(emoji, emojiFont);
             }
             
-            // Create a bitmap that fits the text (with padding)
             int bitmapWidth = Math.Max(size, (int)textSize.Width + 20);
             int bitmapHeight = Math.Max(size, (int)textSize.Height + 20);
-            Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight);
             
-            // Draw emoji in black (Windows Forms limitation - colored emojis not supported)
-            using (Graphics g = Graphics.FromImage(bmp))
+            try
             {
-                g.Clear(Color.Transparent);
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-
-                // Center the text in the bitmap
-                float x = (bitmapWidth - textSize.Width) / 2;
-                float y = (bitmapHeight - textSize.Height) / 2;
-
-                // Draw in black (supports multiple emojis)
-                g.DrawString(emoji, emojiFont, Brushes.Black, x, y);
+                // Use WPF with Emoji.Wpf to render colored emojis
+                // Emoji.Wpf provides TextBlock that supports colored emoji rendering
+                var emojiTextBlock = new Emoji.Wpf.TextBlock
+                {
+                    Text = emoji,
+                    FontSize = size * 0.7,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    Background = System.Windows.Media.Brushes.White, // White background for transparency key
+                    Foreground = System.Windows.Media.Brushes.Black // Text color (doesn't affect emoji colors)
+                };
+                
+                // Create a container to host the TextBlock
+                var container = new System.Windows.Controls.Border
+                {
+                    Width = bitmapWidth,
+                    Height = bitmapHeight,
+                    Background = System.Windows.Media.Brushes.White,
+                    Child = emojiTextBlock
+                };
+                
+                // Measure and arrange
+                container.Measure(new System.Windows.Size(bitmapWidth, bitmapHeight));
+                container.Arrange(new System.Windows.Rect(0, 0, bitmapWidth, bitmapHeight));
+                container.UpdateLayout();
+                
+                // Create a RenderTargetBitmap to capture the WPF control
+                var dpiScale = 96.0; // Standard DPI
+                var renderBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                    bitmapWidth, 
+                    bitmapHeight, 
+                    dpiScale, 
+                    dpiScale, 
+                    System.Windows.Media.PixelFormats.Pbgra32);
+                
+                // Render the container to the bitmap
+                renderBitmap.Render(container);
+                renderBitmap.Freeze(); // Freeze for thread safety
+                
+                // Convert WPF BitmapSource to System.Drawing.Bitmap
+                Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight, PixelFormat.Format32bppArgb);
+                var bitmapData = bmp.LockBits(
+                    new Rectangle(0, 0, bitmapWidth, bitmapHeight),
+                    ImageLockMode.WriteOnly,
+                    PixelFormat.Format32bppArgb);
+                
+                renderBitmap.CopyPixels(
+                    System.Windows.Int32Rect.Empty,
+                    bitmapData.Scan0,
+                    bitmapData.Height * bitmapData.Stride,
+                    bitmapData.Stride);
+                
+                bmp.UnlockBits(bitmapData);
+                
+                // Make white background transparent
+                bmp.MakeTransparent(Color.White);
                 
                 emojiFont.Dispose();
+                return bmp;
             }
-            
-            return bmp;
+            catch (Exception ex)
+            {
+                // Fallback to black emoji if WPF rendering fails
+                System.Diagnostics.Debug.WriteLine($"Emoji.Wpf rendering failed: {ex.Message}, falling back to GDI+");
+                
+                Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight);
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.Clear(Color.Transparent);
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                    g.SmoothingMode = SmoothingMode.HighQuality;
+                    float x = (bitmapWidth - textSize.Width) / 2;
+                    float y = (bitmapHeight - textSize.Height) / 2;
+                    g.DrawString(emoji, emojiFont, Brushes.Black, x, y);
+                }
+                emojiFont.Dispose();
+                return bmp;
+            }
         }
 
         // Emoji tool click handler

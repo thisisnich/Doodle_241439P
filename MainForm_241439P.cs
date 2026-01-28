@@ -9,12 +9,12 @@ namespace Doodle_241439P
     // Brush type enumeration
     public enum BrushType
     {
+        Pen,        // Solid, fully opaque pen (default)
         Paintbrush,
-        Crayon,
         Marker,
         Pencil,
         Airbrush,
-        PureBlack
+        WetBrush  // Speed-based paint brush with variable thickness
     }
 
     public partial class MainForm_241439P : Form
@@ -46,7 +46,7 @@ namespace Doodle_241439P
         string strText = "Doodle Painting";
         int brushSize = 30;   // mandatory options: 10,30,50,70
         int eraserSize = 30;  // mandatory options: 10,30,50,70
-        BrushType currentBrushType = BrushType.Paintbrush;  // Current brush type
+        BrushType currentBrushType = BrushType.Pen;  // Current brush type (default: solid pen)
         Random random = new Random();  // For crayon texture effect
         string selectedFontName = "Arial";
         int selectedFontSize = 30;
@@ -57,6 +57,10 @@ namespace Doodle_241439P
         float imageScale = 1.0f;  // Scale factor for selected image (1.0 = 100%)
         Cursor? brushCursor = null;
         Cursor? eraserCursor = null;
+
+        // Speed tracking for wet brush
+        DateTime lastMouseMoveTime = DateTime.Now;
+        Point lastMousePosition = Point.Empty;
 
         // Shape tool variables
         int ngonSides = 5;  // Default pentagon
@@ -83,7 +87,65 @@ namespace Doodle_241439P
 
         private void adminNumberToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Handler for admin number menu item
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            var attribute = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute), true)[0];
+            Clipboard.SetText(attribute.Value.ToString());
+        }
+
+        private void imageFiltersToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap sourceImage = null;
+            bool applyToSelectedImage = false;
+
+            // Determine what to filter
+            if ((flagLoad || flagEmoji) && selectedImage != null)
+            {
+                // Filter the selected placed image
+                sourceImage = new Bitmap(selectedImage.Image);
+                applyToSelectedImage = true;
+            }
+            else if (bm != null)
+            {
+                // Filter the entire canvas
+                sourceImage = new Bitmap(bm);
+                applyToSelectedImage = false;
+            }
+            else
+            {
+                MessageBox.Show("No image or canvas content to filter.", "Image Filters", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Open filter dialog
+            using (ImageFilterDialog filterDialog = new ImageFilterDialog(sourceImage))
+            {
+                if (filterDialog.ShowDialog(this) == DialogResult.OK && filterDialog.FilteredImage != null)
+                {
+                    SaveUndoState(); // Save state before applying filter
+
+                    if (applyToSelectedImage && selectedImage != null)
+                    {
+                        // Apply filter to selected image
+                        selectedImage.Image.Dispose();
+                        selectedImage.Image = new Bitmap(filterDialog.FilteredImage);
+                        RedrawCanvas();
+                    }
+                    else
+                    {
+                        // Apply filter to entire canvas
+                        if (bm != null)
+                        {
+                            bm.Dispose();
+                        }
+                        bm = new Bitmap(filterDialog.FilteredImage);
+                        picBoxMain.Image = bm;
+                        picBoxMain.Invalidate();
+                    }
+                }
+            }
+
+            sourceImage?.Dispose();
         }
 
         // Save current bitmap state to undo stack
@@ -172,16 +234,19 @@ namespace Doodle_241439P
             shapeFilled = false;
 
             // Initialize brush type
-            currentBrushType = BrushType.Paintbrush;
+            currentBrushType = BrushType.Pen;
 
-            // Set initial tool to brush mode (must be set before UpdateUnifiedComboBox)
+            // Set brush as default tool on load
             flagBrush = true;
-
-            // Initialize unified slider (defaults to brush size)
-            UpdateUnifiedSlider();
-
-            // Initialize unified ComboBox (defaults to brush type)
-            UpdateUnifiedComboBox();
+            flagFill = false;
+            flagLoad = false;
+            flagEmoji = false;
+            flagErase = false;
+            flagText = false;
+            flagLine = false;
+            flagSquare = false;
+            flagCircle = false;
+            flagNgon = false;
 
             // Create icons for shape buttons (so they're visible in designer)
             CreateShapeButtonIcons();
@@ -191,13 +256,60 @@ namespace Doodle_241439P
             brushCursor = CreateCursorFromBitmap(Properties.Resources.paint_brush, new Point(16, 28));
             eraserCursor = CreateCursorFromBitmap(Properties.Resources.eraser, new Point(16, 28));
 
-            // Clear all borders initially
-            ClearAllToolBorders();
-            if (brushCursor != null)
-                picBoxMain.Cursor = brushCursor;
-            else
-                picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+            // Initialize unified slider (defaults to brush size)
+            UpdateUnifiedSlider();
+
+            // Initialize unified ComboBox (defaults to brush type) - will show brush type selector since flagBrush is true
+            UpdateUnifiedComboBox();
+
+            // Set brush tool as selected (border and cursor)
             SetToolBorder(picBoxBrush);
+            picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
+
+            // Setup tooltips for all tools
+            SetupTooltips();
+        }
+
+        // Setup tooltips for all tools
+        private void SetupTooltips()
+        {
+            // Main drawing tools
+            toolTip.SetToolTip(picBoxBrush, "Brush Tool - Draw with various brush types");
+            toolTip.SetToolTip(picBoxErase, "Eraser Tool - Erase parts of your drawing");
+            toolTip.SetToolTip(picBoxText, "Text Tool - Add text to your drawing");
+            toolTip.SetToolTip(picBoxFill, "Fill Tool - Fill areas with color");
+            toolTip.SetToolTip(picBoxEmoji, "Emoji Tool - Add emoji stamps");
+            toolTip.SetToolTip(picBoxLoad, "Load Image - Load an image file");
+            toolTip.SetToolTip(picBoxSave, "Save - Save your drawing");
+            toolTip.SetToolTip(picBoxClear, "Clear - Clear the entire canvas");
+
+            // Shape tools
+            toolTip.SetToolTip(picBoxLine, "Line Tool - Draw straight lines");
+            toolTip.SetToolTip(picBoxSquare, "Square Tool - Draw rectangles");
+            toolTip.SetToolTip(picBoxCircle, "Circle Tool - Draw circles and ellipses");
+            toolTip.SetToolTip(picBoxNgon, "Polygon Tool - Draw polygons with adjustable sides");
+
+            // Color tools
+            toolTip.SetToolTip(picBoxBrushColor, "Current Brush Color");
+            toolTip.SetToolTip(picBoxBlack, "Black");
+            toolTip.SetToolTip(picBoxRed, "Red");
+            toolTip.SetToolTip(picBoxGreen, "Green");
+            toolTip.SetToolTip(picBoxBlue, "Blue");
+            toolTip.SetToolTip(picBoxCyan, "Cyan");
+            toolTip.SetToolTip(picBoxMagenta, "Magenta");
+            toolTip.SetToolTip(picBoxYellow, "Yellow");
+            toolTip.SetToolTip(picBoxOrange, "Orange");
+            toolTip.SetToolTip(picBoxWhite, "White");
+            toolTip.SetToolTip(picBoxPurple, "Purple");
+            toolTip.SetToolTip(picBoxBrown, "Brown");
+            toolTip.SetToolTip(picBoxCustom, "Eyedropper - Pick color from canvas");
+
+            // Other controls
+            toolTip.SetToolTip(btnStampImage, "Stamp Image - Confirm and place the image");
+            toolTip.SetToolTip(trackBarUnified, "Adjust size or scale");
+            toolTip.SetToolTip(comboBoxUnified, "Select brush type or font");
+            toolTip.SetToolTip(trackBarNgonSides, "Adjust number of polygon sides");
+            toolTip.SetToolTip(checkBoxShapeFilled, "Fill shapes with color");
         }
 
         // P/Invoke declarations for creating custom cursors
@@ -306,6 +418,9 @@ namespace Doodle_241439P
                     SaveUndoState();  // Save state before drawing/erasing
                     flagDraw = true;
                     endP = e.Location; // Initialize endP for continuous drawing
+                    // Initialize speed tracking for wet brush
+                    lastMouseMoveTime = DateTime.Now;
+                    lastMousePosition = e.Location;
                 }
             }
             else if (flagLine || flagSquare || flagCircle || flagNgon)
@@ -334,10 +449,10 @@ namespace Doodle_241439P
                             // Clicking on the image - select it and start dragging
                             selectedImage = clickedImage;
                             isDraggingImage = true;
-                            // Calculate offset from click position to the actual image bounds (not scaled)
+                            // Calculate offset from click position to the visual (scaled) bounds
                             // This ensures dragging works correctly regardless of scale
-                            dragOffset = new Point(e.Location.X - clickedImage.Bounds.X,
-                                                   e.Location.Y - clickedImage.Bounds.Y);
+                            dragOffset = new Point(e.Location.X - bounds.X,
+                                                   e.Location.Y - bounds.Y);
                             ShowImageControls(true);
                             UpdateUnifiedSlider(); // Update slider when image is selected
                             picBoxMain.Invalidate();
@@ -410,16 +525,30 @@ namespace Doodle_241439P
         {
             if ((flagLoad || flagEmoji) && isDraggingImage && selectedImage != null)
             {
-                // Update image position using the drag offset
-                Rectangle bounds = GetScaledBounds(selectedImage);
-                int newX = e.Location.X - dragOffset.X;
-                int newY = e.Location.Y - dragOffset.Y;
+                // Calculate new visual position based on mouse location and drag offset
+                // Allow dragging outside canvas bounds - no edge snapping
+                int newVisualX = e.Location.X - dragOffset.X;
+                int newVisualY = e.Location.Y - dragOffset.Y;
                 
-                // Keep image within canvas bounds (optional, but helpful)
-                newX = Math.Max(0, Math.Min(newX, picBoxMain.Width - bounds.Width));
-                newY = Math.Max(0, Math.Min(newY, picBoxMain.Height - bounds.Height));
+                // Convert visual position back to actual bounds position
+                // If image is scaled, we need to account for the centering offset
+                int actualX, actualY;
+                if (imageScale != 1.0f)
+                {
+                    // When scaled, the visual bounds are centered on the actual bounds
+                    // So we need to reverse the centering calculation
+                    int scaledWidth = (int)(selectedImage.Bounds.Width * imageScale);
+                    int scaledHeight = (int)(selectedImage.Bounds.Height * imageScale);
+                    actualX = newVisualX - (selectedImage.Bounds.Width - scaledWidth) / 2;
+                    actualY = newVisualY - (selectedImage.Bounds.Height - scaledHeight) / 2;
+                }
+                else
+                {
+                    actualX = newVisualX;
+                    actualY = newVisualY;
+                }
                 
-                selectedImage.Bounds = new Rectangle(newX, newY, selectedImage.Bounds.Width, selectedImage.Bounds.Height);
+                selectedImage.Bounds = new Rectangle(actualX, actualY, selectedImage.Bounds.Width, selectedImage.Bounds.Height);
 
                 // Redraw all placed images (preserves stamped content and other drawings)
                 // This will redraw the dragged image at its new position
@@ -456,9 +585,18 @@ namespace Doodle_241439P
                     g.DrawLine(eraserPen, startP, endP);
                     // Fill ellipse at end point for complete coverage
                     int radius = eraserSize / 2;
-                    g.FillEllipse(new SolidBrush(picBoxMain.BackColor), endP.X - radius, endP.Y - radius, eraserSize, eraserSize);
+                    using (SolidBrush eraserBrush = new SolidBrush(picBoxMain.BackColor))
+                    {
+                        g.FillEllipse(eraserBrush, endP.X - radius, endP.Y - radius, eraserSize, eraserSize);
+                    }
                 }
                 g.Dispose();
+                // Update speed tracking for all brush types (needed for wet brush)
+                if (flagBrush && flagDraw)
+                {
+                    lastMouseMoveTime = DateTime.Now;
+                    lastMousePosition = endP;
+                }
                 picBoxMain.Invalidate();
             }
             else if (flagText && !isDraggingText)
@@ -509,6 +647,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxBlack_Click(object sender, EventArgs e)
@@ -522,6 +666,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxGreen_Click(object sender, EventArgs e)
@@ -535,6 +685,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxBlue_Click(object sender, EventArgs e)
@@ -548,6 +704,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxCyan_Click(object sender, EventArgs e)
@@ -561,6 +723,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxMagenta_Click(object sender, EventArgs e)
@@ -574,6 +742,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = Cursors.Default;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxYellow_Click(object sender, EventArgs e)
@@ -587,6 +761,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxOrange_Click(object sender, EventArgs e)
@@ -600,6 +780,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxWhite_Click(object sender, EventArgs e)
@@ -613,6 +799,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxPurple_Click(object sender, EventArgs e)
@@ -626,6 +818,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxBrown_Click(object sender, EventArgs e)
@@ -639,6 +837,12 @@ namespace Doodle_241439P
             picBoxBrushColor.Image = null;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             flagErase = false;
+            
+            // Update text preview if in text mode
+            if (flagText)
+            {
+                picBoxMain.Invalidate();
+            }
         }
 
         private void picBoxCustom_Click(object sender, EventArgs e)
@@ -661,6 +865,12 @@ namespace Doodle_241439P
                     picBoxBrushColor.Image = null;
                     picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
                     flagErase = false;
+                    
+                    // Update text preview if in text mode
+                    if (flagText)
+                    {
+                        picBoxMain.Invalidate();
+                    }
                 }
             }
         }
@@ -1082,69 +1292,101 @@ namespace Doodle_241439P
 
             switch (currentBrushType)
             {
-                case BrushType.Paintbrush:
-                    // Soft, painterly effect using rounded caps and ellipses
+                case BrushType.Pen:
+                    // Solid, fully opaque pen - simple and clean
                     brushPen.Width = brushSize;
                     brushPen.StartCap = LineCap.Round;
                     brushPen.EndCap = LineCap.Round;
                     brushPen.LineJoin = LineJoin.Round;
-                    int radius = brushSize / 2;
-                    g.FillEllipse(new SolidBrush(brushPen.Color), end.X - radius, end.Y - radius, brushSize, brushSize);
                     g.DrawLine(brushPen, start, end);
+                    // Fill ellipse at end point for complete coverage
+                    int radius = brushSize / 2;
+                    using (SolidBrush penBrush = new SolidBrush(brushPen.Color))
+                    {
+                        g.FillEllipse(penBrush, end.X - radius, end.Y - radius, brushSize, brushSize);
+                    }
                     break;
 
-                case BrushType.Crayon:
-                    // Rough, grainy texture with irregular edges
-                    brushPen.Width = brushSize;
-                    brushPen.StartCap = LineCap.Round;
-                    brushPen.EndCap = LineCap.Round;
-                    brushPen.LineJoin = LineJoin.Round;
-                    // Add some texture by drawing multiple overlapping circles with slight variations
-                    for (int i = 0; i < 3; i++)
+                case BrushType.Paintbrush:
+                    // Soft, painterly effect using rounded caps, slightly transparent
+                    // Draw to temp bitmap first to prevent opacity accumulation
+                    int paintBrushSize = brushSize;
+                    Rectangle paintBounds = GetStrokeBounds(start, end, paintBrushSize);
+                    using (Bitmap tempBitmap = new Bitmap(paintBounds.Width, paintBounds.Height))
                     {
-                        int offsetX = random.Next(-brushSize / 4, brushSize / 4);
-                        int offsetY = random.Next(-brushSize / 4, brushSize / 4);
-                        int size = brushSize - random.Next(0, brushSize / 3);
-                        g.FillEllipse(new SolidBrush(brushPen.Color),
-                            end.X - size / 2 + offsetX,
-                            end.Y - size / 2 + offsetY,
-                            size, size);
+                        using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                        {
+                            tempG.SmoothingMode = SmoothingMode.HighQuality;
+                            tempG.Clear(Color.Transparent);
+                            using (Pen paintPen = new Pen(brushPen.Color, paintBrushSize))
+                            {
+                                paintPen.StartCap = LineCap.Round;
+                                paintPen.EndCap = LineCap.Round;
+                                paintPen.LineJoin = LineJoin.Round;
+                                // Draw at full opacity to temp bitmap
+                                tempG.DrawLine(paintPen, 
+                                    start.X - paintBounds.X, start.Y - paintBounds.Y,
+                                    end.X - paintBounds.X, end.Y - paintBounds.Y);
+                            }
+                        }
+                        // Composite temp bitmap onto main with desired opacity (70%)
+                        DrawBitmapWithOpacity(g, tempBitmap, paintBounds.Location, 0.7f);
                     }
-                    g.DrawLine(brushPen, start, end);
                     break;
+
 
                 case BrushType.Marker:
-                    // Clean, solid lines with sharp edges
-                    brushPen.Width = brushSize;
-                    brushPen.StartCap = LineCap.Square;
-                    brushPen.EndCap = LineCap.Square;
-                    brushPen.LineJoin = LineJoin.Miter;
-                    g.CompositingMode = CompositingMode.SourceCopy; // Fully opaque
-                    g.DrawLine(brushPen, start, end);
-                    // Fill at end point
-                    radius = brushSize / 2;
-                    g.FillEllipse(new SolidBrush(brushPen.Color), end.X - radius, end.Y - radius, brushSize, brushSize);
-                    g.CompositingMode = CompositingMode.SourceOver;
+                    // Clean, solid lines with square caps, slightly transparent
+                    // Draw to temp bitmap first to prevent opacity accumulation
+                    int markerBrushSize = brushSize;
+                    Rectangle markerBounds = GetStrokeBounds(start, end, markerBrushSize);
+                    using (Bitmap tempBitmap = new Bitmap(markerBounds.Width, markerBounds.Height))
+                    {
+                        using (Graphics tempG = Graphics.FromImage(tempBitmap))
+                        {
+                            tempG.SmoothingMode = SmoothingMode.HighQuality;
+                            tempG.Clear(Color.Transparent);
+                            using (Pen markerPen = new Pen(brushPen.Color, markerBrushSize))
+                            {
+                                markerPen.StartCap = LineCap.Square;
+                                markerPen.EndCap = LineCap.Square;
+                                markerPen.LineJoin = LineJoin.Miter;
+                                // Draw at full opacity to temp bitmap
+                                tempG.DrawLine(markerPen,
+                                    start.X - markerBounds.X, start.Y - markerBounds.Y,
+                                    end.X - markerBounds.X, end.Y - markerBounds.Y);
+                            }
+                        }
+                        // Composite temp bitmap onto main with desired opacity (80%)
+                        DrawBitmapWithOpacity(g, tempBitmap, markerBounds.Location, 0.8f);
+                    }
                     break;
 
                 case BrushType.Pencil:
-                    // Sharp, precise lines with hard edges
-                    brushPen.Width = Math.Max(1, brushSize / 3); // Thinner for pencil
-                    brushPen.StartCap = LineCap.Flat;
-                    brushPen.EndCap = LineCap.Flat;
-                    brushPen.LineJoin = LineJoin.Miter;
-                    g.SmoothingMode = SmoothingMode.None; // Sharp edges
-                    g.DrawLine(brushPen, start, end);
+                    // Sharp, precise lines with hard edges, semi-transparent to remove less paint
+                    int pencilWidth = Math.Max(1, brushSize / 3); // Thinner for pencil
+                    // Use semi-transparent color (about 70% opacity) so it removes less paint
+                    Color pencilColor = Color.FromArgb(178, brushPen.Color); // 178/255 ≈ 70% opacity
+                    using (Pen pencilPen = new Pen(pencilColor, pencilWidth))
+                    {
+                        pencilPen.StartCap = LineCap.Flat;
+                        pencilPen.EndCap = LineCap.Flat;
+                        pencilPen.LineJoin = LineJoin.Miter;
+                        g.SmoothingMode = SmoothingMode.None; // Sharp edges
+                        g.DrawLine(pencilPen, start, end);
+                    }
                     g.SmoothingMode = SmoothingMode.HighQuality;
                     break;
 
                 case BrushType.Airbrush:
-                    // Very soft, feathered edges with gradient opacity
+                    // Very soft, feathered edges with more gradual gradient opacity
                     int airbrushSize = brushSize * 2; // Larger for airbrush effect
                     for (int i = airbrushSize; i > 0; i -= 2)
                     {
-                        int alpha = (int)(255 * (1.0 - (double)i / airbrushSize));
-                        if (alpha > 0)
+                        // More gradual falloff using square root for smoother, longer gradient
+                        double ratio = (double)i / airbrushSize;
+                        int alpha = (int)(255 * (1.0 - Math.Sqrt(ratio))); // Square root for more gradual falloff
+                        if (alpha > 3) // Lower threshold for more gradual effect
                         {
                             using (SolidBrush airbrushBrush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
                             {
@@ -1155,37 +1397,85 @@ namespace Doodle_241439P
                             }
                         }
                     }
-                    // Draw connecting line with gradient
+                    // Draw connecting line with more gradual gradient
                     DrawGradientLine(g, start, end, brushSize);
                     break;
 
-                case BrushType.PureBlack:
-                    // Completely opaque, sharp edges
-                    brushPen.Width = brushSize;
-                    brushPen.StartCap = LineCap.Square;
-                    brushPen.EndCap = LineCap.Square;
-                    brushPen.LineJoin = LineJoin.Miter;
-                    Color pureColor = Color.FromArgb(255, 0, 0, 0); // Pure black
-                    if (brushPen.Color.R > 128 || brushPen.Color.G > 128 || brushPen.Color.B > 128)
+                case BrushType.WetBrush:
+                    // Speed-based paint brush - slightly opaque, thickness varies with speed
+                    // Calculate speed based on distance and time from last position
+                    double distance = 0;
+                    double speed = 0;
+                    if (lastMousePosition != Point.Empty)
                     {
-                        // If not black, use the selected color but fully opaque
-                        pureColor = Color.FromArgb(255, brushPen.Color);
+                        distance = Math.Sqrt(Math.Pow(end.X - lastMousePosition.X, 2) + Math.Pow(end.Y - lastMousePosition.Y, 2));
+                        TimeSpan timeElapsed = DateTime.Now - lastMouseMoveTime;
+                        speed = timeElapsed.TotalMilliseconds > 0 ? distance / timeElapsed.TotalMilliseconds : 0;
                     }
-                    using (Pen purePen = new Pen(pureColor, brushSize))
-                    using (SolidBrush pureBrush = new SolidBrush(pureColor))
+                    else
                     {
-                        purePen.StartCap = LineCap.Square;
-                        purePen.EndCap = LineCap.Square;
-                        purePen.LineJoin = LineJoin.Miter;
-                        g.CompositingMode = CompositingMode.SourceCopy;
-                        g.DrawLine(purePen, start, end);
-                        radius = brushSize / 2;
-                        g.FillEllipse(pureBrush, end.X - radius, end.Y - radius, brushSize, brushSize);
-                        g.CompositingMode = CompositingMode.SourceOver;
+                        // First point - use distance from start
+                        distance = Math.Sqrt(Math.Pow(end.X - start.X, 2) + Math.Pow(end.Y - start.Y, 2));
+                        speed = 0; // Default to slow (thick) for first point
+                    }
+                    
+                    // Faster speed = thinner brush, slower speed = thicker brush
+                    // Speed range: 0-5 pixels/ms, map to brush size variation: 0.6x to 1.4x
+                    // Clamp speed to reasonable range
+                    speed = Math.Min(5.0, speed);
+                    double speedFactor = Math.Max(0.6, Math.Min(1.4, 1.4 - (speed * 0.16)));
+                    int wetBrushSize = (int)(brushSize * speedFactor);
+                    wetBrushSize = Math.Max(1, wetBrushSize); // Ensure minimum size
+                    
+                    // Slightly transparent (about 80% opacity)
+                    Color wetColor = Color.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
+                    using (Pen wetPen = new Pen(wetColor, wetBrushSize))
+                    using (SolidBrush wetBrush = new SolidBrush(wetColor))
+                    {
+                        wetPen.StartCap = LineCap.Round;
+                        wetPen.EndCap = LineCap.Round;
+                        wetPen.LineJoin = LineJoin.Round;
+                        g.DrawLine(wetPen, start, end);
+                        int wetRadius = wetBrushSize / 2;
+                        g.FillEllipse(wetBrush, end.X - wetRadius, end.Y - wetRadius, wetBrushSize, wetBrushSize);
                     }
                     break;
             }
         }
+
+        // Helper method to calculate bounding rectangle for a stroke
+        private Rectangle GetStrokeBounds(Point start, Point end, int brushSize)
+        {
+            int minX = Math.Min(start.X, end.X) - brushSize;
+            int minY = Math.Min(start.Y, end.Y) - brushSize;
+            int maxX = Math.Max(start.X, end.X) + brushSize;
+            int maxY = Math.Max(start.Y, end.Y) + brushSize;
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        // Helper method to draw a bitmap with specified opacity
+        private void DrawBitmapWithOpacity(Graphics g, Bitmap bitmap, Point location, float opacity)
+        {
+            if (opacity >= 1.0f)
+            {
+                g.DrawImage(bitmap, location);
+            }
+            else
+            {
+                // Create color matrix for opacity
+                ColorMatrix matrix = new ColorMatrix();
+                matrix.Matrix33 = opacity; // Alpha channel
+                ImageAttributes attributes = new ImageAttributes();
+                attributes.SetColorMatrix(matrix, ColorMatrixFlag.Default, ColorAdjustType.Bitmap);
+                g.DrawImage(bitmap,
+                    new Rectangle(location.X, location.Y, bitmap.Width, bitmap.Height),
+                    0, 0, bitmap.Width, bitmap.Height,
+                    GraphicsUnit.Pixel,
+                    attributes);
+                attributes.Dispose();
+            }
+        }
+
 
         // Helper method for airbrush gradient line
         private void DrawGradientLine(Graphics g, Point start, Point end, int size)
@@ -1197,11 +1487,12 @@ namespace Doodle_241439P
                 int x = (int)(start.X + (end.X - start.X) * t);
                 int y = (int)(start.Y + (end.Y - start.Y) * t);
 
-                // Draw with decreasing opacity from center
+                // Draw with decreasing opacity from center - use square root for more gradual falloff
                 for (int j = size; j > 0; j -= 2)
                 {
-                    int alpha = (int)(180 * (1.0 - (double)j / size));
-                    if (alpha > 0)
+                    double ratio = (double)j / size;
+                    int alpha = (int)(180 * (1.0 - Math.Sqrt(ratio))); // Square root for more gradual falloff
+                    if (alpha > 3) // Lower threshold for more gradual effect
                     {
                         using (SolidBrush brush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
                         {
@@ -1582,14 +1873,13 @@ namespace Doodle_241439P
             }
         }
 
-        // Auto-stamp image when switching tools from load mode
+        // Auto-stamp image when switching tools from load/emoji mode
         private void AutoStampOnToolSwitch()
         {
-            if (flagLoad && selectedImage != null)
+            if ((flagLoad || flagEmoji) && selectedImage != null)
             {
                 StampImage(selectedImage);
             }
-            // Note: Don't auto-stamp emojis when switching - let user place multiple
         }
 
         // Create a bitmap from emoji text (supports multiple emojis)
@@ -1631,16 +1921,38 @@ namespace Doodle_241439P
         // Emoji tool click handler
         private void picBoxEmoji_Click(object sender, EventArgs e)
         {
-            // Auto-stamp if switching from load mode (but not if already in emoji mode)
-            // If already in emoji mode, don't stamp - just show dialog to change emoji
-            if (flagLoad && !flagEmoji)
+            // Auto-stamp if switching from load/fill mode (but not if already in emoji mode)
+            if ((flagLoad || flagFill) && !flagEmoji)
             {
                 AutoStampOnToolSwitch();
             }
-            // If already in emoji mode with a selected emoji, don't auto-stamp it
-            // User can continue placing more emojis or change the emoji text
-
-            // Prompt user to enter emoji
+            
+            // If emojiText is already set and we're switching back to emoji mode,
+            // just re-enable emoji mode without showing the dialog
+            if (!string.IsNullOrEmpty(emojiText) && !flagEmoji)
+            {
+                // Re-enable emoji mode with existing emoji
+                flagEmoji = true;
+                flagLoad = false;
+                flagFill = false;
+                flagBrush = false;
+                flagErase = false;
+                flagText = false;
+                flagLine = false;
+                flagSquare = false;
+                flagCircle = false;
+                flagNgon = false;
+                picBoxBrushColor.Image = Properties.Resources.happy_face;
+                picBoxBrushColor.BackColor = Color.Transparent;
+                picBoxMain.Cursor = Cursors.Default;
+                SetToolBorder(picBoxEmoji);
+                UpdateUnifiedSlider();
+                UpdateUnifiedComboBox();
+                return;
+            }
+            
+            // If already in emoji mode, show dialog to allow changing emoji
+            // Otherwise, prompt user to enter emoji (first time or empty emojiText)
             using (Form emojiInputForm = new Form())
             {
                 emojiInputForm.Text = "Enter Emoji";
@@ -1689,6 +2001,7 @@ namespace Doodle_241439P
                         // Enable emoji mode
                         flagEmoji = true;
                         flagLoad = false;
+                        flagFill = false;
                         flagBrush = false;
                         flagErase = false;
                         flagText = false;
@@ -1802,7 +2115,7 @@ namespace Doodle_241439P
             {
                 // Brush or shape tools - show brush types
                 comboBoxUnified.Items.Clear();
-                comboBoxUnified.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
+                comboBoxUnified.Items.AddRange(new object[] { "Pen", "Paintbrush", "Marker", "Pencil", "Airbrush", "Wet Brush" });
                 comboBoxUnified.SelectedIndex = (int)currentBrushType;
                 lblUnifiedCombo.Text = "Brush Type:";
                 comboBoxUnified.Visible = true;
@@ -1832,7 +2145,7 @@ namespace Doodle_241439P
         }
 
         // Unified ComboBox value changed handler
-        private void comboBoxUnified_SelectedIndexChanged(object sender, EventArgs e)
+        private void comboBoxUnified_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (comboBoxUnified.SelectedIndex < 0) return;
 
@@ -1909,7 +2222,7 @@ namespace Doodle_241439P
         }
 
         // Unified slider value changed handler
-        private void trackBarUnified_ValueChanged(object sender, EventArgs e)
+        private void trackBarUnified_ValueChanged(object? sender, EventArgs e)
         {
             int value = trackBarUnified.Value;
 

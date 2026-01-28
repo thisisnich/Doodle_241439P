@@ -34,7 +34,9 @@ namespace Doodle_241439P
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             menuStrip1 = new MenuStrip();
+            imageFiltersToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             nameToolStripMenuItem = new ToolStripMenuItem();
             adminNumberToolStripMenuItem = new ToolStripMenuItem();
@@ -75,6 +77,7 @@ namespace Doodle_241439P
             lblUnified = new Label();
             comboBoxUnified = new ComboBox();
             lblUnifiedCombo = new Label();
+            toolTip = new ToolTip(components);
             menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picBoxMain).BeginInit();
             panelColor.SuspendLayout();
@@ -111,13 +114,20 @@ namespace Doodle_241439P
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { aboutToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { imageFiltersToolStripMenuItem, aboutToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 3, 0, 3);
             menuStrip1.Size = new Size(885, 30);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
+            // 
+            // imageFiltersToolStripMenuItem
+            // 
+            imageFiltersToolStripMenuItem.Name = "imageFiltersToolStripMenuItem";
+            imageFiltersToolStripMenuItem.Size = new Size(108, 24);
+            imageFiltersToolStripMenuItem.Text = "Image Filters";
+            imageFiltersToolStripMenuItem.Click += imageFiltersToolStripMenuItem_Click;
             // 
             // aboutToolStripMenuItem
             // 
@@ -137,8 +147,9 @@ namespace Doodle_241439P
             // adminNumberToolStripMenuItem
             // 
             adminNumberToolStripMenuItem.Name = "adminNumberToolStripMenuItem";
-            adminNumberToolStripMenuItem.Size = new Size(247, 26);
-            adminNumberToolStripMenuItem.Text = "<Your Admin Number>";
+            adminNumberToolStripMenuItem.Size = new Size(148, 26);
+            adminNumberToolStripMenuItem.Text = "241439P";
+            adminNumberToolStripMenuItem.Click += adminNumberToolStripMenuItem_Click;
             // 
             // picBoxMain
             // 
@@ -544,7 +555,7 @@ namespace Doodle_241439P
             // 
             comboBoxUnified.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxUnified.FormattingEnabled = true;
-            comboBoxUnified.Items.AddRange(new object[] { "Paintbrush", "Crayon", "Marker", "Pencil", "Airbrush", "Pure Black" });
+            comboBoxUnified.Items.AddRange(new object[] { "Pen", "Paintbrush", "Marker", "Pencil", "Airbrush", "Wet Brush" });
             comboBoxUnified.Location = new Point(719, 105);
             comboBoxUnified.Name = "comboBoxUnified";
             comboBoxUnified.Size = new Size(162, 28);
@@ -588,7 +599,6 @@ namespace Doodle_241439P
             Name = "MainForm_241439P";
             StartPosition = FormStartPosition.CenterScreen;
             Text = " ";
-            TopMost = true;
             Load += MainForm_241439P_Load;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
@@ -630,6 +640,7 @@ namespace Doodle_241439P
         #endregion
 
         private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem imageFiltersToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem nameToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem adminNumberToolStripMenuItem;
@@ -670,5 +681,6 @@ namespace Doodle_241439P
         private System.Windows.Forms.TrackBar trackBarNgonSides;
         private System.Windows.Forms.Label lblNgonSides;
         private System.Windows.Forms.CheckBox checkBoxShapeFilled;
+        private System.Windows.Forms.ToolTip toolTip;
     }
 }

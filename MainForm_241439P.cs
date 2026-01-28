@@ -3,7 +3,21 @@ using System.Runtime.InteropServices;
 using Doodle_241439P.Properties;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-// WPF imports only used in CreateEmojiBitmap method - using fully qualified names to avoid conflicts
+using System.Windows.Forms.Integration;
+using WpfPoint = System.Windows.Point;
+using WpfSize = System.Windows.Size;
+using WpfRect = System.Windows.Rect;
+using WpfColor = System.Windows.Media.Color;
+using WpfBrushes = System.Windows.Media.Brushes;
+using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
+using WpfVerticalAlignment = System.Windows.VerticalAlignment;
+using WpfPen = System.Windows.Media.Pen;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows.Controls;
+using Emoji.Wpf;
+using DrawingColor = System.Drawing.Color;
+using DrawingPen = System.Drawing.Pen;
 
 namespace Doodle_241439P
 {
@@ -22,9 +36,9 @@ namespace Doodle_241439P
     {
         Bitmap bm;
         Graphics g;
-        System.Drawing.Pen brushPen = new System.Drawing.Pen(Color.Black, 8);  // Thick pen for brush drawing
-        System.Drawing.Pen eraserPen = new System.Drawing.Pen(Color.LightGray, 30);  // Pen for eraser drawing
-        SolidBrush brush = new SolidBrush(Color.Black);
+        DrawingPen brushPen = new DrawingPen(DrawingColor.Black, 8);  // Thick pen for brush drawing
+        DrawingPen eraserPen = new DrawingPen(DrawingColor.LightGray, 30);  // Pen for eraser drawing
+        SolidBrush brush = new SolidBrush(DrawingColor.Black);
         Point startP = new Point(0, 0);
         Point endP = new Point(0, 0);
         bool flagDraw = false;
@@ -208,7 +222,7 @@ namespace Doodle_241439P
             // Fill with initial background color
             using (Graphics g = Graphics.FromImage(bm))
             {
-                g.Clear(Color.LightGray);
+                g.Clear(DrawingColor.LightGray);
             }
 
             picBoxMain.Image = bm;
@@ -219,7 +233,7 @@ namespace Doodle_241439P
 
             // Initialize brush color display (default to brush with paint brush icon)
             picBoxBrushColor.Image = Properties.Resources.paint_brush;
-            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxBrushColor.BackColor = DrawingColor.Transparent;
 
             // Initialize text box with default text
             txtBoxText.Text = "Doodle Painting";
@@ -341,7 +355,7 @@ namespace Doodle_241439P
                 Bitmap cursorBitmap = new Bitmap(32, 32);
                 using (Graphics g = Graphics.FromImage(cursorBitmap))
                 {
-                    g.Clear(Color.Transparent);
+                    g.Clear(DrawingColor.Transparent);
                     g.SmoothingMode = SmoothingMode.HighQuality;
                     g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     // Draw the bitmap scaled to fit the cursor size
@@ -881,7 +895,7 @@ namespace Doodle_241439P
             SaveUndoState();  // Save state before clearing
             g = Graphics.FromImage(bm);
             Rectangle rect = picBoxMain.ClientRectangle;
-            g.FillRectangle(new SolidBrush(Color.LightGray), rect);
+            g.FillRectangle(new SolidBrush(DrawingColor.LightGray), rect);
             g.Dispose();
             picBoxMain.Invalidate();
         }
@@ -895,7 +909,7 @@ namespace Doodle_241439P
             eraserPen.Color = picBoxMain.BackColor;
             eraserPen.Width = eraserSize;
             picBoxBrushColor.Image = Properties.Resources.eraser;
-            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxBrushColor.BackColor = DrawingColor.Transparent;
             flagErase = true;
             flagText = false;
             flagBrush = false;
@@ -918,7 +932,7 @@ namespace Doodle_241439P
             AutoStampOnToolSwitch();
 
             picBoxBrushColor.Image = Properties.Resources.text;
-            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxBrushColor.BackColor = DrawingColor.Transparent;
             flagDraw = false;
             flagText = true;
             flagErase = false;
@@ -994,7 +1008,7 @@ namespace Doodle_241439P
                                 // For PNG with transparency: make unpainted areas transparent
                                 using (Graphics g = Graphics.FromImage(bmp))
                                 {
-                                    g.Clear(Color.Transparent); // Start with transparent background
+                                    g.Clear(DrawingColor.Transparent); // Start with transparent background
 
                                     // Draw the canvas bitmap (which has the gray background and all drawings)
                                     // We need to replace the gray background with transparency
@@ -1002,13 +1016,13 @@ namespace Doodle_241439P
                                     {
                                         for (int x = 0; x < this.bm.Width; x++)
                                         {
-                                            Color pixelColor = this.bm.GetPixel(x, y);
+                                            DrawingColor pixelColor = this.bm.GetPixel(x, y);
                                             // If pixel is the canvas background color (LightGray), make it transparent
-                                            if (pixelColor.R == Color.LightGray.R &&
-                                                pixelColor.G == Color.LightGray.G &&
-                                                pixelColor.B == Color.LightGray.B)
+                                            if (pixelColor.R == DrawingColor.LightGray.R &&
+                                                pixelColor.G == DrawingColor.LightGray.G &&
+                                                pixelColor.B == DrawingColor.LightGray.B)
                                             {
-                                                bmp.SetPixel(x, y, Color.Transparent);
+                                                bmp.SetPixel(x, y, DrawingColor.Transparent);
                                             }
                                             else
                                             {
@@ -1119,7 +1133,7 @@ namespace Doodle_241439P
                         flagCircle = false;
                         flagNgon = false;
                         picBoxBrushColor.Image = Properties.Resources.image;
-                        picBoxBrushColor.BackColor = Color.Transparent;
+                        picBoxBrushColor.BackColor = DrawingColor.Transparent;
                         SetToolBorder(picBoxLoad);
                         UpdateUnifiedSlider();
                         UpdateUnifiedComboBox();
@@ -1151,7 +1165,7 @@ namespace Doodle_241439P
             flagCircle = false;
             flagNgon = false;
             picBoxBrushColor.Image = Properties.Resources.paint_brush;
-            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxBrushColor.BackColor = DrawingColor.Transparent;
             picBoxMain.Cursor = brushCursor ?? Cursors.Cross;
             SetToolBorder(picBoxBrush);
             UpdateUnifiedSlider();
@@ -1175,7 +1189,7 @@ namespace Doodle_241439P
             flagCircle = false;
             flagNgon = false;
             picBoxBrushColor.Image = Properties.Resources.bucket;
-            picBoxBrushColor.BackColor = Color.Transparent;
+            picBoxBrushColor.BackColor = DrawingColor.Transparent;
             picBoxMain.Cursor = Cursors.Hand; // Hand cursor for fill tool
             SetToolBorder(picBoxFill);
             UpdateUnifiedSlider();
@@ -1192,8 +1206,8 @@ namespace Doodle_241439P
                 startPoint.Y < 0 || startPoint.Y >= bm.Height)
                 return;
 
-            Color targetColor = bm.GetPixel(startPoint.X, startPoint.Y);
-            Color fillColor = brushPen.Color;
+            DrawingColor targetColor = bm.GetPixel(startPoint.X, startPoint.Y);
+            DrawingColor fillColor = brushPen.Color;
 
             // If clicking on the same color, don't do anything
             if (targetColor.ToArgb() == fillColor.ToArgb())
@@ -1215,7 +1229,7 @@ namespace Doodle_241439P
                     current.Y < 0 || current.Y >= bm.Height)
                     continue;
 
-                Color pixelColor = bm.GetPixel(current.X, current.Y);
+                DrawingColor pixelColor = bm.GetPixel(current.X, current.Y);
                 
                 // Use tolerance for color matching (helps with anti-aliasing)
                 if (ColorsMatch(pixelColor, targetColor))
@@ -1318,8 +1332,8 @@ namespace Doodle_241439P
                         using (Graphics tempG = Graphics.FromImage(tempBitmap))
                         {
                             tempG.SmoothingMode = SmoothingMode.HighQuality;
-                            tempG.Clear(Color.Transparent);
-                            using (Pen paintPen = new Pen(brushPen.Color, paintBrushSize))
+                            tempG.Clear(DrawingColor.Transparent);
+                            using (DrawingPen paintPen = new DrawingPen(brushPen.Color, paintBrushSize))
                             {
                                 paintPen.StartCap = LineCap.Round;
                                 paintPen.EndCap = LineCap.Round;
@@ -1346,8 +1360,8 @@ namespace Doodle_241439P
                         using (Graphics tempG = Graphics.FromImage(tempBitmap))
                         {
                             tempG.SmoothingMode = SmoothingMode.HighQuality;
-                            tempG.Clear(Color.Transparent);
-                            using (Pen markerPen = new Pen(brushPen.Color, markerBrushSize))
+                            tempG.Clear(DrawingColor.Transparent);
+                            using (DrawingPen markerPen = new DrawingPen(brushPen.Color, markerBrushSize))
                             {
                                 markerPen.StartCap = LineCap.Square;
                                 markerPen.EndCap = LineCap.Square;
@@ -1367,8 +1381,8 @@ namespace Doodle_241439P
                     // Sharp, precise lines with hard edges, semi-transparent to remove less paint
                     int pencilWidth = Math.Max(1, brushSize / 3); // Thinner for pencil
                     // Use semi-transparent color (about 70% opacity) so it removes less paint
-                    Color pencilColor = Color.FromArgb(178, brushPen.Color); // 178/255 ≈ 70% opacity
-                    using (Pen pencilPen = new Pen(pencilColor, pencilWidth))
+                    DrawingColor pencilColor = DrawingColor.FromArgb(178, brushPen.Color); // 178/255 ≈ 70% opacity
+                    using (DrawingPen pencilPen = new DrawingPen(pencilColor, pencilWidth))
                     {
                         pencilPen.StartCap = LineCap.Flat;
                         pencilPen.EndCap = LineCap.Flat;
@@ -1389,7 +1403,7 @@ namespace Doodle_241439P
                         int alpha = (int)(255 * (1.0 - Math.Sqrt(ratio))); // Square root for more gradual falloff
                         if (alpha > 3) // Lower threshold for more gradual effect
                         {
-                            using (SolidBrush airbrushBrush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
+                            using (SolidBrush airbrushBrush = new SolidBrush(DrawingColor.FromArgb(alpha, brushPen.Color)))
                             {
                                 g.FillEllipse(airbrushBrush,
                                     end.X - i / 2,
@@ -1429,8 +1443,8 @@ namespace Doodle_241439P
                     wetBrushSize = Math.Max(1, wetBrushSize); // Ensure minimum size
                     
                     // Slightly transparent (about 80% opacity)
-                    Color wetColor = Color.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
-                    using (Pen wetPen = new Pen(wetColor, wetBrushSize))
+                    DrawingColor wetColor = DrawingColor.FromArgb(204, brushPen.Color); // 204/255 ≈ 80% opacity
+                    using (DrawingPen wetPen = new DrawingPen(wetColor, wetBrushSize))
                     using (SolidBrush wetBrush = new SolidBrush(wetColor))
                     {
                         wetPen.StartCap = LineCap.Round;
@@ -1495,7 +1509,7 @@ namespace Doodle_241439P
                     int alpha = (int)(180 * (1.0 - Math.Sqrt(ratio))); // Square root for more gradual falloff
                     if (alpha > 3) // Lower threshold for more gradual effect
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(alpha, brushPen.Color)))
+                        using (SolidBrush brush = new SolidBrush(DrawingColor.FromArgb(alpha, brushPen.Color)))
                         {
                             g.FillEllipse(brush, x - j / 2, y - j / 2, j, j);
                         }
@@ -1512,10 +1526,10 @@ namespace Doodle_241439P
             g = Graphics.FromImage(bm);
             g.SmoothingMode = SmoothingMode.HighQuality;
             // Use brushPen.Width to ensure it matches the current brush size setting
-            Pen shapePen = new Pen(brushPen.Color, brushPen.Width);
+            DrawingPen shapePen = new DrawingPen(brushPen.Color, brushPen.Width);
             SolidBrush shapeBrush = new SolidBrush(brushPen.Color);
 
-            bool shiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+            bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
 
             if (flagLine)
             {
@@ -1542,7 +1556,7 @@ namespace Doodle_241439P
             else if (flagNgon)
             {
                 // Use Ctrl for regular (equal-sided) polygon, like Shift for square/circle
-                bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
                 Point[] points = CalculateNgonPoints(shapeStartPoint, shapeEndPoint, ctrlPressed);
                 if (points != null && points.Length > 0)
                 {
@@ -1655,7 +1669,7 @@ namespace Doodle_241439P
             if ((flagLoad || flagEmoji) && selectedImage != null && !isDraggingImage)
             {
                 Rectangle bounds = GetScaledBounds(selectedImage);
-                using (Pen borderPen = new Pen(Color.Blue, 2))
+                using (DrawingPen borderPen = new DrawingPen(DrawingColor.Blue, 2))
                 {
                     e.Graphics.DrawRectangle(borderPen, bounds);
                 }
@@ -1671,7 +1685,7 @@ namespace Doodle_241439P
                 {
                     e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
                     using (Font font = new Font(selectedFontName, selectedFontSize))
-                    using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(128, brushPen.Color)))
+                    using (SolidBrush textBrush = new SolidBrush(DrawingColor.FromArgb(128, brushPen.Color)))
                     {
                         e.Graphics.DrawString(previewText, font, textBrush, previewMousePos.X, previewMousePos.Y);
                     }
@@ -1683,10 +1697,10 @@ namespace Doodle_241439P
             {
                 e.Graphics.SmoothingMode = SmoothingMode.HighQuality;
                 // Use brushPen.Width to ensure it matches the current brush size setting
-                using (Pen previewPen = new Pen(Color.FromArgb(180, brushPen.Color), brushPen.Width))
-                using (SolidBrush previewBrush = new SolidBrush(Color.FromArgb(128, brushPen.Color)))
+                using (DrawingPen previewPen = new DrawingPen(DrawingColor.FromArgb(180, brushPen.Color), brushPen.Width))
+                using (SolidBrush previewBrush = new SolidBrush(DrawingColor.FromArgb(128, brushPen.Color)))
                 {
-                    bool shiftPressed = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
+                    bool shiftPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Shift) == Keys.Shift;
 
                     if (flagLine)
                     {
@@ -1713,7 +1727,7 @@ namespace Doodle_241439P
                     else if (flagNgon)
                     {
                         // Use Ctrl for regular (equal-sided) polygon
-                        bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                        bool ctrlPressed = (System.Windows.Forms.Control.ModifierKeys & Keys.Control) == Keys.Control;
                         Point[] points = CalculateNgonPoints(shapeStartPoint, shapeEndPoint, ctrlPressed);
                         if (points != null && points.Length > 0)
                         {
@@ -1941,11 +1955,11 @@ namespace Doodle_241439P
                 renderBitmap.Freeze(); // Freeze for thread safety
                 
                 // Convert WPF BitmapSource to System.Drawing.Bitmap
-                Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight, PixelFormat.Format32bppArgb);
+                Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 var bitmapData = bmp.LockBits(
                     new Rectangle(0, 0, bitmapWidth, bitmapHeight),
                     ImageLockMode.WriteOnly,
-                    PixelFormat.Format32bppArgb);
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 
                 renderBitmap.CopyPixels(
                     System.Windows.Int32Rect.Empty,
@@ -1956,7 +1970,7 @@ namespace Doodle_241439P
                 bmp.UnlockBits(bitmapData);
                 
                 // Make white background transparent
-                bmp.MakeTransparent(Color.White);
+                bmp.MakeTransparent(DrawingColor.White);
                 
                 emojiFont.Dispose();
                 return bmp;
@@ -1969,12 +1983,12 @@ namespace Doodle_241439P
                 Bitmap bmp = new Bitmap(bitmapWidth, bitmapHeight);
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
-                    g.Clear(Color.Transparent);
+                    g.Clear(DrawingColor.Transparent);
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
                     g.SmoothingMode = SmoothingMode.HighQuality;
                     float x = (bitmapWidth - textSize.Width) / 2;
                     float y = (bitmapHeight - textSize.Height) / 2;
-                    g.DrawString(emoji, emojiFont, Brushes.Black, x, y);
+                    g.DrawString(emoji, emojiFont, System.Drawing.Brushes.Black, x, y);
                 }
                 emojiFont.Dispose();
                 return bmp;
@@ -2006,7 +2020,7 @@ namespace Doodle_241439P
                 flagCircle = false;
                 flagNgon = false;
                 picBoxBrushColor.Image = Properties.Resources.happy_face;
-                picBoxBrushColor.BackColor = Color.Transparent;
+                picBoxBrushColor.BackColor = DrawingColor.Transparent;
                 picBoxMain.Cursor = Cursors.Default;
                 SetToolBorder(picBoxEmoji);
                 UpdateUnifiedSlider();
@@ -2028,7 +2042,7 @@ namespace Doodle_241439P
                 emojiInputForm.TopMost = true; // Show above TopMost main form
                 emojiInputForm.Owner = this; // Set owner to ensure proper z-order
 
-                TextBox inputBox = new TextBox();
+                System.Windows.Forms.TextBox inputBox = new System.Windows.Forms.TextBox();
                 inputBox.Location = new Point(30, 30);
                 inputBox.Size = new Size(340, 80);
                 inputBox.Multiline = true;
@@ -2037,13 +2051,13 @@ namespace Doodle_241439P
                 inputBox.SelectAll();
 
 
-                Button okButton = new Button();
+                System.Windows.Forms.Button okButton = new System.Windows.Forms.Button();
                 okButton.Text = "OK";
                 okButton.DialogResult = DialogResult.OK;
                 okButton.Location = new Point(120, 130);
                 okButton.Size = new Size(100, 35);
 
-                Button cancelButton = new Button();
+                System.Windows.Forms.Button cancelButton = new System.Windows.Forms.Button();
                 cancelButton.Text = "Cancel";
                 cancelButton.DialogResult = DialogResult.Cancel;
                 cancelButton.Location = new Point(230, 130);
@@ -2073,7 +2087,7 @@ namespace Doodle_241439P
                         flagCircle = false;
                         flagNgon = false;
                         picBoxBrushColor.Image = Properties.Resources.happy_face;
-                        picBoxBrushColor.BackColor = Color.Transparent;
+                        picBoxBrushColor.BackColor = DrawingColor.Transparent;
                         picBoxMain.Cursor = Cursors.Default;
                         SetToolBorder(picBoxEmoji);
                         UpdateUnifiedSlider();
@@ -2292,7 +2306,7 @@ namespace Doodle_241439P
             if (flagBrush || flagLine || flagSquare || flagCircle || flagNgon)
             {
                 // Brush or shape tools - update brush size
-                if (Control.ModifierKeys == Keys.Control)
+                if (System.Windows.Forms.Control.ModifierKeys == Keys.Control)
                 {
                     value = SnapToPresetSize(value);
                     trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
@@ -2312,7 +2326,7 @@ namespace Doodle_241439P
             else if (flagErase)
             {
                 // Eraser tool - update eraser size
-                if (Control.ModifierKeys == Keys.Control)
+                if (System.Windows.Forms.Control.ModifierKeys == Keys.Control)
                 {
                     value = SnapToPresetSize(value);
                     trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
@@ -2326,7 +2340,7 @@ namespace Doodle_241439P
             else if (flagText)
             {
                 // Text tool - update font size
-                if (Control.ModifierKeys == Keys.Control)
+                if (System.Windows.Forms.Control.ModifierKeys == Keys.Control)
                 {
                     value = SnapToPresetSize(value);
                     trackBarUnified.ValueChanged -= trackBarUnified_ValueChanged;
@@ -2457,10 +2471,10 @@ namespace Doodle_241439P
             Bitmap squareIcon = new Bitmap(30, 30);
             using (Graphics g = Graphics.FromImage(squareIcon))
             {
-                g.Clear(Color.Transparent);
+                g.Clear(DrawingColor.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 Rectangle rect = new Rectangle(5, 5, 20, 20);
-                g.DrawRectangle(new Pen(Color.Black, 2), rect);
+                g.DrawRectangle(new DrawingPen(DrawingColor.Black, 2), rect);
             }
             picBoxSquare.Image = squareIcon;
 
@@ -2468,10 +2482,10 @@ namespace Doodle_241439P
             Bitmap circleIcon = new Bitmap(30, 30);
             using (Graphics g = Graphics.FromImage(circleIcon))
             {
-                g.Clear(Color.Transparent);
+                g.Clear(DrawingColor.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 Rectangle rect = new Rectangle(5, 5, 20, 20);
-                g.DrawEllipse(new Pen(Color.Black, 2), rect);
+                g.DrawEllipse(new DrawingPen(DrawingColor.Black, 2), rect);
             }
             picBoxCircle.Image = circleIcon;
 
@@ -2479,7 +2493,7 @@ namespace Doodle_241439P
             Bitmap ngonIcon = new Bitmap(30, 30);
             using (Graphics g = Graphics.FromImage(ngonIcon))
             {
-                g.Clear(Color.Transparent);
+                g.Clear(DrawingColor.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 Point[] points = new Point[]
                 {
@@ -2489,7 +2503,7 @@ namespace Doodle_241439P
                     new Point(8, 22),    // Bottom left
                     new Point(5, 12)     // Left
                 };
-                g.DrawPolygon(new Pen(Color.Black, 2), points);
+                g.DrawPolygon(new DrawingPen(DrawingColor.Black, 2), points);
             }
             picBoxNgon.Image = ngonIcon;
         }
@@ -2500,7 +2514,7 @@ namespace Doodle_241439P
             if (picBoxSquare.Image == null)
             {
                 Rectangle rect = new Rectangle(5, 5, 20, 20);
-                e.Graphics.DrawRectangle(new Pen(Color.Black, 1), rect);
+                e.Graphics.DrawRectangle(new DrawingPen(DrawingColor.Black, 1), rect);
             }
         }
 
@@ -2509,7 +2523,7 @@ namespace Doodle_241439P
             if (picBoxCircle.Image == null)
             {
                 Rectangle rect = new Rectangle(5, 5, 20, 20);
-                e.Graphics.DrawEllipse(new Pen(Color.Black, 1), rect);
+                e.Graphics.DrawEllipse(new DrawingPen(DrawingColor.Black, 1), rect);
             }
         }
 
@@ -2526,7 +2540,7 @@ namespace Doodle_241439P
                     new Point(8, 22),    // Bottom left
                     new Point(5, 12)     // Left
                 };
-                e.Graphics.DrawPolygon(new Pen(Color.Black, 1), points);
+                e.Graphics.DrawPolygon(new DrawingPen(DrawingColor.Black, 1), points);
             }
         }
 
